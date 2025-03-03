@@ -1,0 +1,10 @@
+.optionsList {
+  ul {
+    list-style: none;
+  }
+
+  li {
+      border: 1px solid lightblue;
+      padding: 4px;
+  }
+}
