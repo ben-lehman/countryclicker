@@ -1,40 +1,51 @@
 import { useState } from "react";
+import MapChart from "./MapChart.tsx";
 import AutocompleteList from "./AutocompleteList.tsx";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+import {geodata, Country, Countries} from './countryData.ts';
 import "./App.css";
-import countrydata from "./assets/countrydata.json";
 
+// import am5geodata_data_countries2 from "@amcharts/amcharts5-geodata/data/countries2";
 function App() {
-  const typedCountryData = countrydata as Countries;
-  const allCountryNames = Object.keys(typedCountryData);
-  const totalCountries = allCountryNames.length;
+  const typedCountryData = geodata as Countries;
+  const allCountryCodes = Object.keys(typedCountryData);
+  const allCountryNames = Object.entries(typedCountryData).map(([key, value]) => {
+    return value.country
+  })
 
   const [chosenCountry, setChosenCountry] = useState<Country>(
-    getRandomCountry(allCountryNames),
+    getRandomCountry(allCountryCodes),
   );
+  // const [guesses, setGuesses] = useState<string[]>(['', '', '', '', '', '']);
 
   function getRandomCountry(countries: Array<string>, currentCountryName = "") {
     const randomIndex = Math.floor(Math.random() * countries.length);
-    const countryName: string = countries[randomIndex];
+    const countryCode: string = countries[randomIndex];
 
-    if (currentCountryName == countryName) {
-      console.log("same country:", countryName, currentCountryName);
+    if (currentCountryName == countryCode) {
       return getRandomCountry(countries, currentCountryName);
     }
-    const country: Country = typedCountryData[countryName];
+    const country: Country = typedCountryData[countryCode];
     return country;
+  }
+
+  function guessCountry (guess : string) {
+    if(guess === chosenCountry.country) {
+      // correct message
+    } else {
+    //  setGuessRemaining((prev) => prev + 1);
+
+    }
   }
 
   return (
     <>
       <div className="card">
-        <p>Country Count {totalCountries}</p>
-        <p>Current Country: {chosenCountry.displayName} </p>
+        <MapChart chosenCountry={chosenCountry} />
+        <p>Current Country: {chosenCountry.country} </p>
         <button
           onClick={() =>
             setChosenCountry(
-              getRandomCountry(allCountryNames, chosenCountry.displayName),
+              getRandomCountry(allCountryCodes, chosenCountry.country),
             )
           }
         >
@@ -48,12 +59,3 @@ function App() {
 
 export default App;
 
-type Country = {
-  displayName: string;
-  url: string;
-  attribution: string;
-};
-
-type Countries = {
-  [key: string]: Country;
-};
