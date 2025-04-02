@@ -18,6 +18,7 @@ function MapChart({ chosenCountry }: { chosenCountry: Country }) {
     chosenCountry.continent_code,
   );
   const includedCountriesList = Object.keys(includedCountries);
+  console.log('data', am5geodata_worldLow);
 
   function getCountriesFromContinent(continent_code: string) {
     switch (continent_code) {
