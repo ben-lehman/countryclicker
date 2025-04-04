@@ -9,3 +9,9 @@
 #### DATA
 
 - update countries.json to preseverve polygons during simplification. Lots of small islands have a null geometry
+
+#### GO SERVER
+
+Endpoints
+
+"GET /api/newcountry"
