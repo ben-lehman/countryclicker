@@ -37,15 +37,6 @@ type Properties struct {
 	Bbox      []float64 `json:"bbox"` // [west, south, east, north] 
 }
 
-type CountriesData []CountryData
-
-type CountryData struct {
-	Name      string    `json:"NAME"`
-	IsoA2     string    `json:"ISO_A2"`
-	Continent string    `json:"CONTINENT"`
-	Bbox      []float64 `json:"bbox"` // [west, south, east, north] 
-}
-
 func main() {
   inputPath := "../../../data/countriesv2.json"
   outputPath := "../../data/countries-list.json"
@@ -61,15 +52,15 @@ func main() {
     log.Fatalf("Unable to read jsonFile %s: %v", inputPath, err)
   }
 
-  var countries FeatureCollection;
-  err = json.Unmarshal(byteData, &countries)
+  var featureCollection FeatureCollection
+  err = json.Unmarshal(byteData, &featureCollection)
   if err != nil {
     log.Fatalf("Unable to unmarshal byteData: %v", err)
   }
 
-  parsedCountries := make(countries.CountriesData, len(countries.Features))
-  for i, feature := range countries.Features {
-    country := CountryData{
+  parsedCountries := make(countries.CountriesData, len(featureCollection.Features))
+  for i, feature := range featureCollection.Features{
+    country := countries.CountryData{
       Name: feature.Properties.Name,
       IsoA2: feature.Properties.IsoA2,
       Continent: feature.Properties.Continent,
