@@ -4,7 +4,6 @@
 
 #### MAP
 
-- set zoom bounding box that includes target's countries bounding box plus other countries. So more zoomed out than just focusing on the target country, and the target country should
 
 #### DATA
 
@@ -14,4 +13,9 @@
 
 Endpoints
 
+- move country selection and bounding box to 
 "GET /api/newcountry"
+
+#### DATABASE
+
+start with SQLite - move to turso for deployment

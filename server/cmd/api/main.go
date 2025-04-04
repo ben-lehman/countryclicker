@@ -4,35 +4,31 @@ import (
 	"log"
 	"net/http"
 
-  "github.com/ben-lehman/country-clicker/server/internal/countries"
+	"github.com/ben-lehman/countryclicker/server/internal/countries"
+	"github.com/ben-lehman/countryclicker/server/internal/handlers"
 )
 
-
 func main() {
-  // Set up Data
-  filePath := "../../../data/countriesv2.json"
-  countriesData, err := countries.SetUp(filePath)
-  if err != nil {
-    log.Fatalf("Error setting up country data: %v", err)
-  }
+	// Set up Data
+	filePath := "../../../data/countries-list.json"
+	countriesData, err := countries.SetUp(filePath)
+	if err != nil {
+		log.Fatalf("Error setting up country data: %v", err)
+	}
 
-  // Set up Server
-  const port = "8080"
+	// Set up Server
+	const port = "8080"
 
-  mux := http.NewServeMux()
-  mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-    w.WriteHeader(http.StatusOK)
-    w.Write([]byte(http.StatusText(http.StatusOK)))
-  })
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /check-health", handlers.CheckHealth)
 
-  server := &http.Server{
-    Addr: ":" + port,
-    Handler: mux,
-  }
+	server := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
+	}
 
-  log.Printf("Listening on port: %s", port)
-  log.Fatal(server.ListenAndServe())
+	log.Printf("Listening on port: %s", port)
+	log.Fatal(server.ListenAndServe())
 }
 
 type CountryData struct {
