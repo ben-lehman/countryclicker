@@ -1,16 +1,21 @@
-import { MapContainer, TileLayer, GeoJSON, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, useMap, Rectangle } from "react-leaflet";
 import { Feature, FeatureCollection } from "geojson";
 import { useCallback, useEffect, useState } from "react";
-import countryGeoJSON from "../../data/countries.json";
+//import countryGeoJSON from "../../data/custom_with_bbox.geo.json";
+import countryGeoJSON from "../../data/countriesv3.geo.json";
 import "leaflet/dist/leaflet.css";
 import "./App.css";
-import { StyleFunction } from "leaflet";
+import { StyleFunction, LatLngBoundsExpression } from "leaflet";
+import { Button } from "@/components/ui/button";
 
 // Constants for world bounds
 const WORLD_BOUNDS: [number, number, number, number] = [-180, -90, 180, 90];
 
 // Function to expand bounding box with random positioning
-const expandBoundingBox = (bbox: [number, number, number, number], expansionFactor: number = 2): [number, number, number, number] => {
+const expandBoundingBox = (bbox: [number, number, number, number]): [number, number, number, number] => {
+  const minExpansionFactor = 2
+  const maxExpansionFactor = 5
+  const expansionFactor = Math.floor(Math.random() * (maxExpansionFactor - minExpansionFactor + 1) + minExpansionFactor)
   const [west, south, east, north] = bbox;
   console.log("bbox:", bbox);
 
@@ -20,8 +25,8 @@ const expandBoundingBox = (bbox: [number, number, number, number], expansionFact
   console.log("width:", width, "height:", height);
 
   // Calculate the total expanded dimensions
-  const minWidthForExpansion = 5;
-  const minHeightForExpansion = 5;
+  const minWidthForExpansion = 10;
+  const minHeightForExpansion = 10;
   const expandedWidth = Math.max(minWidthForExpansion, width) * expansionFactor;
   const expandedHeight = Math.max(minHeightForExpansion, height) * expansionFactor;
   console.log("expandedWidth:", expandedWidth, "expandedHeight:", expandedHeight);
@@ -46,28 +51,59 @@ const expandBoundingBox = (bbox: [number, number, number, number], expansionFact
   console.log("newWest:", newWest, "newSouth:", newSouth, "newEast:", newEast, "newNorth:", newNorth);
 
   // If we hit world bounds, adjust the opposite boundary to maintain the expanded size
+  /* 
   const finalWest = newEast - expandedWidth < WORLD_BOUNDS[0] ? WORLD_BOUNDS[0] : newWest;
   const finalSouth = newNorth - expandedHeight < WORLD_BOUNDS[1] ? WORLD_BOUNDS[1] : newSouth;
   const finalEast = finalWest + expandedWidth > WORLD_BOUNDS[2] ? WORLD_BOUNDS[2] : finalWest + expandedWidth;
   const finalNorth = finalSouth + expandedHeight > WORLD_BOUNDS[3] ? WORLD_BOUNDS[3] : finalSouth + expandedHeight;
   console.log("finalWest:", finalWest, "finalSouth:", finalSouth, "finalEast:", finalEast, "finalNorth:", finalNorth);
-  return [finalWest, finalSouth, finalEast, finalNorth];
+  */
+  return [newWest, newSouth, newEast, newNorth];
 };
 
-// Component to handle map zooming
+// Function to convert [west, south, east, north] to Leaflet bounds [[south, west], [north, east]]
+const convertToLeafletBounds = (bbox: [number, number, number, number]): LatLngBoundsExpression => {
+  const [west, south, east, north] = bbox;
+  return [[south, west], [north, east]];
+};
+
+// Component to handle map zooming and draw bounding boxes
 function ZoomToCountry({ bounds }: { bounds: [number, number, number, number] | null }) {
   const map = useMap();
+  const [expandedBounds, setExpandedBounds] = useState<[number, number, number, number] | null>(null);
 
   useEffect(() => {
     if (bounds) {
-      // Convert [west, south, east, north] to [[south, west], [north, east]]
-      const expandedBounds = expandBoundingBox(bounds);
-      const [west, south, east, north] = expandedBounds;
-      map.fitBounds([[south, west], [north, east]]);
+      const expanded = expandBoundingBox(bounds);
+      setExpandedBounds(expanded);
+      map.fitBounds(convertToLeafletBounds(expanded));
+      console.log("zoom info", map.getZoom(), map.getBounds())
     }
   }, [bounds, map]);
 
-  return null;
+  if (!bounds || !expandedBounds) return null;
+
+  return
+  return (
+    <>
+      <Rectangle
+        bounds={convertToLeafletBounds(bounds)}
+        pathOptions={{
+          color: 'red',
+          weight: 2,
+          fillOpacity: 0.1,
+        }}
+      />
+      <Rectangle
+        bounds={convertToLeafletBounds(expandedBounds)}
+        pathOptions={{
+          color: 'blue',
+          weight: 2,
+          fillOpacity: 0.1,
+        }}
+      />
+    </>
+  );
 }
 
 function App() {
@@ -78,6 +114,7 @@ function App() {
   // Function to select a random country
   const selectRandomCountry = useCallback(() => {
     const features = (countryGeoJSON as FeatureCollection).features;
+    console.log('countries len', features.length)
     const randomIndex = Math.floor(Math.random() * features.length);
     const selected = features[randomIndex];
     console.log("selected:", selected);
@@ -91,10 +128,9 @@ function App() {
     }
   }, []);
 
-  // Function to handle country clicks
   const onCountryClick = useCallback((feature: Feature) => {
-    const countryName = feature.properties?.NAME;
-    const targetName = targetCountry?.properties?.NAME;
+    const countryName = feature.properties?.name;
+    const targetName = targetCountry?.properties?.name;
 
     if (targetName && countryName && countryName === targetName) {
       setMessage(`Correct! You found ${countryName}`);
@@ -114,7 +150,7 @@ function App() {
       };
     }
 
-    if (feature.properties?.NAME === targetCountry?.properties?.NAME) {
+    if (feature.properties?.name === targetCountry?.properties?.name) {
       return {
         fillColor: 'green',
         weight: 1,
@@ -136,10 +172,10 @@ function App() {
   return (
     <div className="game-container">
       <div className="controls">
-        <button onClick={selectRandomCountry}>Select Random Country</button>
+        <Button onClick={selectRandomCountry}>Select Random Country</Button>
         {targetCountry && (
           <div className="target-country">
-            Target Country: {targetCountry.properties?.NAME}
+            Target Country: {targetCountry.properties?.name}
           </div>
         )}
         {message && (
@@ -152,7 +188,13 @@ function App() {
         center={[20, 0]}
         zoom={2}
         scrollWheelZoom={false}
-        style={{ height: "100vh", width: "100%" }}
+        dragging={false}
+        zoomControl={false}
+        doubleClickZoom={false}
+        touchZoom={false}
+        boxZoom={false}
+        keyboard={false}
+        style={{ height: "80vh", width: "100%" }}
       >
         <GeoJSON
           data={countryGeoJSON as FeatureCollection}
