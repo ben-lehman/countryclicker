@@ -8,6 +8,7 @@ import (
 
 	"github.com/ben-lehman/countryclicker/server/internal/countries"
 	"github.com/ben-lehman/countryclicker/server/internal/handlers"
+	"github.com/ben-lehman/countryclicker/server/internal/middleware"
 )
 
 type Application struct {
@@ -28,10 +29,10 @@ func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	// load data
-  filePath, err := filepath.Abs("../../data/countries-list.json")
-  if err != nil {
-    logger.Fatalf("Unable to get country data file: %v", err)
-  }
+	filePath, err := filepath.Abs("../../data/countries-list.json")
+	if err != nil {
+		logger.Fatalf("Unable to get country data file: %v", err)
+	}
 
 	countriesData, err := countries.SetUp(filePath)
 	if err != nil {
@@ -51,9 +52,11 @@ func main() {
 	mux.HandleFunc("POST /api/next-country", h.GetNextCountry)
 	mux.HandleFunc("GET /api/checkhealth", h.CheckHealth)
 
+	corsAppliedMux := middleware.EnableCORS(mux)
+
 	server := &http.Server{
 		Addr:    ":" + port,
-		Handler: mux,
+		Handler: corsAppliedMux,
 	}
 
 	logger.Printf("Listening on port: %s", port)

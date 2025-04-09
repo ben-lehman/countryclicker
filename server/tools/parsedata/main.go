@@ -27,21 +27,22 @@ type Geometry struct {
 	Coordinates any `json:"coordinates"`
 }
 
+type ClientGeoJSON map[string]Feature
+
 type Properties struct {
-	Name      string    `json:"NAME"`
-	Type      string    `json:"type"`
-	AdminISO  string    `json:"adm0_iso"`
-	IsoA2     string    `json:"ISO_A2"`
-	IsoA3     string    `json:"ISO_A3"`
-	Continent string    `json:"CONTINENT"`
-	Subregion string    `json:"SUBREGION"`
-	RegionWb  string    `json:"REGION_WB"`
+	Name      string     `json:"name"`
+	Type      string     `json:"type"`
+	AdminISO  string     `json:"adm0_iso"`
+	Continent string     `json:"continent"`
+	Subregion string     `json:"subregion"`
 	Bbox      [4]float64 `json:"bbox"` // [west, south, east, north]
 }
 
 func main() {
-	inputPath := "../../../data/countriesv3.geo.json"
+	inputPath := "../../../data/countriesv4.geo.json"
 	outputPath := "../../data/countries-list.json"
+
+	geoJSONForClient()
 
 	jsonFile, err := os.Open(inputPath)
 	if err != nil {
@@ -64,15 +65,58 @@ func main() {
 	for i, feature := range featureCollection.Features {
 		country := countries.CountryData{
 			Name:      feature.Properties.Name,
-      Type: feature.Properties.Type,
-      AdminISO: feature.Properties.AdminISO,
-			IsoA2:     feature.Properties.IsoA2,
+			Type:      feature.Properties.Type,
+			AdminISO:  feature.Properties.AdminISO,
 			Continent: feature.Properties.Continent,
-      Subregion: feature.Properties.Subregion,
+			Subregion: feature.Properties.Subregion,
 			Bbox:      feature.Properties.Bbox,
 		}
 
 		parsedCountries[i] = country
+	}
+
+	parsedJSON, err := json.Marshal(parsedCountries)
+
+	parsedFile, err := os.Create(outputPath)
+	if err != nil {
+		log.Fatalf("Unable to create file at %s, %v", outputPath, err)
+	}
+	defer parsedFile.Close()
+
+	err = os.WriteFile(outputPath, parsedJSON, 0644)
+	if err != nil {
+		log.Fatalf("Unable to copy file %s to %s, %v", inputPath, outputPath, err)
+	}
+
+	fmt.Printf("Successfull parsed data from %s to %s", inputPath, outputPath)
+}
+
+func geoJSONForClient() {
+	inputPath := "../../../data/countriesv4.geo.json"
+	outputPath := "../../../data/client.geo.json"
+
+	jsonFile, err := os.Open(inputPath)
+	if err != nil {
+		log.Fatalf("Unable to open country data file at %s: %v", inputPath, err)
+	}
+	defer jsonFile.Close()
+
+	byteData, err := io.ReadAll(jsonFile)
+	if err != nil {
+		log.Fatalf("Unable to read jsonFile %s: %v", inputPath, err)
+	}
+
+	var featureCollection FeatureCollection
+	err = json.Unmarshal(byteData, &featureCollection)
+	if err != nil {
+		log.Fatalf("Unable to unmarshal byteData: %v", err)
+	}
+
+	var parsedCountries ClientGeoJSON
+	parsedCountries = make(ClientGeoJSON)
+	for _, feature := range featureCollection.Features {
+		iso := feature.Properties.AdminISO
+		parsedCountries[iso] = feature
 	}
 
 	parsedJSON, err := json.Marshal(parsedCountries)

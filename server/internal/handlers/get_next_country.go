@@ -14,8 +14,8 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 		CurrentCountry string `json:"current_country"`
 	}
 	type response struct {
-		NextCountry  countries.CountryData `json:"next_country"`
-		ExpandedBbox [4]float64            `json:"expanded_bbox"` // [west, south, east, north]
+		countries.CountryData
+		ExpandedBbox [4]float64 `json:"expanded_bbox"` // [west, south, east, north]
 	}
 
 	logger := h.deps.GetLogger()
@@ -27,7 +27,7 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 	params := parameters{}
 	err := decoder.Decode(&params)
 	if err != nil {
-    logger.Println("params: ", r.Body)
+		logger.Println("params: ", r.Body)
 		h.respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
 	}
@@ -46,7 +46,7 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 	expandedBbox := ExpandBoundingBox(nextCountry.Bbox)
 	logger.Printf("Sending next country: %s\n", nextCountry.AdminISO)
 	h.respondWithJSON(w, http.StatusOK, response{
-		NextCountry:  nextCountry,
+		CountryData:  nextCountry,
 		ExpandedBbox: expandedBbox,
 	})
 }

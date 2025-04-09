@@ -11,12 +11,11 @@ import (
 type CountriesData []CountryData
 
 type CountryData struct {
-	Name      string     `json:"NAME"`
+	Name      string     `json:"name"`
 	Type      string     `json:"type"`
 	AdminISO  string     `json:"adm0_iso"`
-	IsoA2     string     `json:"ISO_A2"`
-	Continent string     `json:"CONTINENT"`
-	Subregion string     `json:"SUBREGION"`
+	Continent string     `json:"continent"`
+	Subregion string     `json:"subregion"`
 	Bbox      [4]float64 `json:"bbox"` // [west, south, east, north]
 }
 
