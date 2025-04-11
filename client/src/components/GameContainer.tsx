@@ -6,7 +6,7 @@ import {
 } from "react-leaflet";
 import { Feature, FeatureCollection } from "geojson";
 import { useCallback, useEffect, useState } from "react";
-import countryGeoJSON from "../../../data/countriesv4.geo.json";
+import countryGeoJSON from "../../../data/countriesv4filtered.geo.json";
 import "leaflet/dist/leaflet.css";
 import { StyleFunction, LatLngBoundsExpression } from "leaflet";
 import { Button } from "@/components/ui/button";
@@ -104,16 +104,26 @@ async function fetchNextCountry(currentCountry: string): Promise<CountryData> {
 }
 
 function GameContainer() {
+  const [gameStarted, setGameStarted] = useState(false);
   const [targetCountry, setTargetCountry] = useState<CountryData | null>(null);
   const [countryBounds, setCountryBounds] = useState<[number, number, number, number] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+  const [isCorrect, setIsCorrect] = useState(false);
+
+  const startGame = () => {
+    setGameStarted(true);
+    selectRandomCountry();
+  }
 
   // Function to select a random country
   const selectRandomCountry = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    setAttempts(0);
+    setIsCorrect(false);
 
     try {
       const data = await fetchNextCountry(targetCountry?.adminISO || "ZZZ");
@@ -132,16 +142,18 @@ function GameContainer() {
 
   const onCountryClick = useCallback(
     (feature: Feature) => {
+      setAttempts(attempts + 1);
       const countryName = feature.properties?.name;
       const targetName = targetCountry?.name;
 
       if (targetName && countryName && countryName === targetName) {
+        setIsCorrect(true);
         setMessage(`Correct! You found ${countryName}`);
       } else if (countryName) {
         setMessage(`Wrong! That was ${countryName}. Try again!`);
       }
     },
-    [targetCountry],
+    [targetCountry, attempts],
   );
 
   const countryStyle: StyleFunction<any> = useCallback(
@@ -156,9 +168,19 @@ function GameContainer() {
         };
       }
 
-      if (feature.properties?.name === targetCountry?.name) {
+      if (isCorrect && feature.properties?.name === targetCountry?.name) {
         return {
           fillColor: "green",
+          weight: 1,
+          opacity: 1,
+          color: "white",
+          fillOpacity: 1,
+        };
+      }
+
+      if (feature.properties?.name === targetCountry?.name && attempts >= 3) {
+        return {
+          fillColor: "lightblue",
           weight: 1,
           opacity: 1,
           color: "white",
@@ -174,29 +196,16 @@ function GameContainer() {
         fillOpacity: 1,
       };
     },
-    [targetCountry],
+    [targetCountry, attempts],
   );
 
   return (
-    <div className="game-container">
-      <div className="controls">
-        <Button onClick={selectRandomCountry} disabled={isLoading}>
-          {isLoading ? "Loading..." : "Select Random Country"}
-        </Button>
-        {error && <div className="error-message">{error}</div>}
-        {targetCountry && (
-          <div className="target-country">
-            Target Country: {targetCountry.name}
-          </div>
-        )}
-        {message && (
-          <div
-            className={`message ${message.startsWith("Correct") ? "correct" : "wrong"}`}
-          >
-            {message}
-          </div>
-        )}
-      </div>
+    <div className="game-container w-full h-full p-4">
+      {!gameStarted && (
+        <div className="absolute w-full h-full flex justify-center items-center z-9999">
+          <Button onClick={() => startGame()}>Start Game</Button>
+        </div>
+      )}
       <MapContainer
         center={[20, 0]}
         zoom={2}
@@ -220,6 +229,24 @@ function GameContainer() {
         />
         <ZoomToCountry bounds={countryBounds} expandedBounds={countryBounds} />
       </MapContainer>
+      <div className="controls flex flex-col gap-2 justify-center items-center">
+        {error && <div className="error-message">{error}</div>}
+        {targetCountry && (
+          <div className="target-country">
+            Target Country: {targetCountry.name}
+          </div>
+        )}
+        {message && (
+          <div
+            className={`message ${message.startsWith("Correct") ? "correct" : "wrong"}`}
+          >
+            {message}
+            {message.startsWith("Correct") && attempts > 0 && (
+              <Button onClick={() => selectRandomCountry()}>Next Country</Button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
