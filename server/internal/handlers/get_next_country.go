@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
 		CurrentCountry string `json:"current_country"`
+		Continent      string `json:"continent"`
 	}
 	type response struct {
 		countries.CountryData
@@ -19,7 +21,7 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 	}
 
 	logger := h.deps.GetLogger()
-	countriesList := h.deps.GetCountries()
+	mapData := h.deps.GetMapData()
 
 	logger.Println("Handling /api/next-country")
 
@@ -30,6 +32,18 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 		logger.Println("params: ", r.Body)
 		h.respondWithError(w, http.StatusInternalServerError, "Couldn't decode parameters", err)
 		return
+	}
+
+	var countriesList countries.CountriesData
+	var expandedBbox [4]float64
+	if params.Continent == "" {
+		countriesList = mapData.AllCountries
+	} else {
+		countriesList, expandedBbox, err = getCountriesFromContinent(mapData, params.Continent)
+    if err != nil {
+      h.respondWithError(w, http.StatusBadRequest, "Couldn't get continent data", err)
+      return
+    }
 	}
 
 	currentCountry := params.CurrentCountry
@@ -43,12 +57,33 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	expandedBbox := ExpandBoundingBox(nextCountry.Bbox)
+	if params.Continent == "" {
+		expandedBbox = ExpandBoundingBox(nextCountry.Bbox)
+	}
 	logger.Printf("Sending next country: %s\n", nextCountry.AdminISO)
 	h.respondWithJSON(w, http.StatusOK, response{
 		CountryData:  nextCountry,
 		ExpandedBbox: expandedBbox,
 	})
+}
+
+func getCountriesFromContinent(mapData countries.MapData, cont string) (countries.CountriesData, [4]float64, error) {
+	switch cont {
+	case "africa":
+		return mapData.Africa.Countries, mapData.Africa.Bbox, nil
+	case "asia":
+		return mapData.Asia.Countries, mapData.Asia.Bbox, nil
+	case "europe":
+		return mapData.Europe.Countries, mapData.Europe.Bbox, nil
+	case "northamerica":
+		return mapData.NorthAmerica.Countries, mapData.NorthAmerica.Bbox, nil
+	case "oceania":
+		return mapData.Oceania.Countries, mapData.Oceania.Bbox, nil
+	case "southamerica":
+		return mapData.SouthAmerica.Countries, mapData.SouthAmerica.Bbox, nil
+	default:
+		return countries.CountriesData{}, [4]float64{}, fmt.Errorf("Invalid continent")
+	}
 }
 
 /**

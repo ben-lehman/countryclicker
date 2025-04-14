@@ -10,13 +10,15 @@ import (
 	"strings"
 
 	"github.com/ben-lehman/countryclicker/server/internal/countries"
+	"github.com/paulmach/orb"
+	"github.com/paulmach/orb/geojson"
 )
 
 type FeatureCollection struct {
 	Type     string    `json:"type"` // Should be "FeatureCollection"
 	Features []Feature `json:"features"`
 }
-
+ 
 type Feature struct {
 	Type       string     `json:"type"` // Should be "Feature"
 	Geometry   Geometry   `json:"geometry"`
@@ -40,13 +42,16 @@ type Properties struct {
 	Bbox      [4]float64 `json:"bbox"` // [west, south, east, north]
 }
 
+// original countries geoJSON
+// filter original
+// geoJSONtoCountryList
+// geoJSON to Continent
+//    - add continent bbox
+
 func main() {
-  filterGeoJSON()
+	filterGeoJSON()
 	geoJSONToCountryList()
 	groupCountryListByContinent()
-
-	// geoJSONForClient()
-
 }
 
 func filterGeoJSON() {
@@ -100,7 +105,7 @@ func filterGeoJSON() {
 }
 
 func geoJSONToCountryList() {
-	inputPath := "../../../data/countriesv4.geo.json"
+	inputPath := "../../../data/countriesfilteredv4.geo.json"
 	outputPath := "../../data/countries-list.json"
 
 	jsonFile, err := os.Open(inputPath)
@@ -153,8 +158,14 @@ func geoJSONToCountryList() {
 	fmt.Printf("Successfull parsed data from %s to %s", inputPath, outputPath)
 }
 
+type ContinentData struct {
+	Bbox      [4]float64              `json:"bbox"`
+	Countries countries.CountriesData `json:"countries"`
+}
+
 func groupCountryListByContinent() {
-	inputPath := "../../data/countries-list.json"
+	inputPath := "../../../data/countriesv4filtered.geo.json"
+  inputListPath := "../../data/countries-list.json"
 	outputDir := "../../data/"
 
 	// read countries list
@@ -169,22 +180,86 @@ func groupCountryListByContinent() {
 		log.Fatalf("Unable to read jsonFile %s: %v", inputPath, err)
 	}
 
+	fc, err := geojson.UnmarshalFeatureCollection(byteData)
+	if err != nil {
+		log.Fatalf("Error unmarshalling GeoJSON FeatureCollection from '%s': %v\n", inputPath, err)
+	}
+
+	continentFeatures := make(map[string][]*geojson.Feature)
+	continentBbox := make(map[string][4]float64)
+	for _, feature := range fc.Features {
+		cont := feature.Properties.MustString("continent")
+		cont = strings.ToLower(strings.ReplaceAll(cont, " ", ""))
+		continentFeatures[cont] = append(continentFeatures[cont], feature)
+	}
+
+	for cont, features := range continentFeatures {
+		overallBound := orb.Bound{}
+		firstPass := true
+		log.Println("==================== calculated bbox for ", cont)
+		for _, feature := range features {
+			if feature.Geometry == nil {
+				log.Printf("Feature %v has nil geometry, skipping", feature.ID)
+				continue
+			}
+
+			featureBound := feature.Geometry.Bound()
+			if featureBound.IsEmpty() {
+				log.Printf("Feature %v has empty/invalid geometry bound, skipping", feature.ID)
+				continue
+			}
+
+			if firstPass {
+				overallBound = featureBound
+				firstPass = false
+			} else {
+				overallBound = overallBound.Extend(featureBound.Min)
+				overallBound = overallBound.Extend(featureBound.Max)
+			}
+		}
+
+		bbox := [4]float64{
+			overallBound.Min.Lon(), // West
+			overallBound.Min.Lat(), // South
+			overallBound.Max.Lon(), // East
+			overallBound.Max.Lat(), // North
+		}
+		continentBbox[cont] = bbox
+    log.Println("cont bbox", continentBbox)
+	}
+
+	// read countries list
+	jsonListFile, err := os.Open(inputListPath)
+	if err != nil {
+		log.Fatalf("Unable to open country data file at %s: %v", inputPath, err)
+	}
+	defer jsonFile.Close()
+
+	byteListData, err := io.ReadAll(jsonListFile)
+	if err != nil {
+		log.Fatalf("Unable to read jsonFile %s: %v", inputPath, err)
+	}
+
 	var countriesList countries.CountriesData
-	err = json.Unmarshal(byteData, &countriesList)
+	err = json.Unmarshal(byteListData, &countriesList)
 	if err != nil {
 		log.Fatalf("Unable to unmarshal byteData: %v", err)
 	}
 
 	// create map of countries with continent keys
-	Continents := make(map[string]countries.CountriesData)
+	Continents := make(map[string]ContinentData)
 	for _, country := range countriesList {
-		cont := country.Continent
-		Continents[cont] = append(Continents[cont], country)
+		cont := strings.ToLower(country.Continent)
+    cont = strings.ReplaceAll(cont, " ", "")
+		Continents[cont] = ContinentData{
+			Bbox:      continentBbox[cont],
+			Countries: append(Continents[cont].Countries, country),
+		}
 	}
 
 	// each continent key writes to a <continent>-countries-list.json
-	for cont, countries := range Continents {
-		jsonData, err := json.Marshal(countries)
+	for cont, data := range Continents {
+		jsonData, err := json.Marshal(data)
 		if err != nil {
 			log.Fatalf("Unable to marshal countries: %v", err)
 		}

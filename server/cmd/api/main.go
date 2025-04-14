@@ -12,16 +12,16 @@ import (
 )
 
 type Application struct {
-	logger    *log.Logger
-	countries countries.CountriesData
+	logger  *log.Logger
+	mapData countries.MapData
 }
 
 func (a *Application) GetLogger() *log.Logger {
 	return a.logger
 }
 
-func (a *Application) GetCountries() countries.CountriesData {
-	return a.countries
+func (a *Application) GetMapData() countries.MapData {
+	return a.mapData
 }
 
 func main() {
@@ -29,19 +29,19 @@ func main() {
 	logger := log.New(os.Stdout, "", log.Ldate|log.Ltime)
 
 	// load data
-	filePath, err := filepath.Abs("../../data/countries-list.json")
+	dataDir, err := filepath.Abs("../../data")
 	if err != nil {
 		logger.Fatalf("Unable to get country data file: %v", err)
 	}
 
-	countriesData, err := countries.SetUp(filePath)
+	mapData, err := countries.SetUp(dataDir)
 	if err != nil {
 		logger.Fatalf("Error setting up country data: %v", err)
 	}
 
 	app := &Application{
-		logger:    logger,
-		countries: countriesData,
+		logger:  logger,
+		mapData: mapData,
 	}
 
 	// Set up Server

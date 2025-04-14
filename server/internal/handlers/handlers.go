@@ -8,7 +8,7 @@ import (
 
 type Dependencies interface {
   GetLogger() *log.Logger
-  GetCountries() countries.CountriesData
+  GetMapData() countries.MapData
 }
 
 type Handlers struct{
