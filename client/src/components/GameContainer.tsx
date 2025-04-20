@@ -1,91 +1,40 @@
-import {
-  MapContainer,
-  GeoJSON,
-  useMap,
-  Rectangle,
-} from "react-leaflet";
-import { Feature, FeatureCollection } from "geojson";
-import { useCallback, useEffect, useState } from "react";
-import countryGeoJSON from "../../../data/countriesv4filtered.geo.json";
+import { Feature } from "geojson";
+import { useCallback, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import { StyleFunction, LatLngBoundsExpression } from "leaflet";
+import WorldMap from "./WorldMap.tsx";
+import { StyleFunction } from "leaflet";
 import { Button } from "@/components/ui/button";
-
-// Function to convert [west, south, east, north] to Leaflet bounds [[south, west], [north, east]]
-const convertToLeafletBounds = (
-  bbox: [number, number, number, number],
-): LatLngBoundsExpression => {
-  const [west, south, east, north] = bbox;
-  return [
-    [south, west],
-    [north, east],
-  ];
-};
-
-// Component to handle map zooming and draw bounding boxes
-function ZoomToCountry({
-  bounds,
-  expandedBounds,
-}: {
-  bounds: [number, number, number, number] | null;
-  expandedBounds: [number, number, number, number] | null;
-}) {
-  const map = useMap();
-
-  useEffect(() => {
-    if (expandedBounds) {
-      map.fitBounds(convertToLeafletBounds(expandedBounds));
-      console.log("zoom info", map.getZoom(), map.getBounds());
-    }
-  }, [expandedBounds, map]);
-
-  if (!bounds || !expandedBounds) return null;
-
-  // Now we know bounds and expandedBounds are not null
-  const originalBounds: [number, number, number, number] = bounds;
-  const finalExpandedBounds: [number, number, number, number] = expandedBounds;
-
-  return; // used for debugging expanded bounds. remove before production
-
-  return (
-    <>
-      <Rectangle
-        bounds={convertToLeafletBounds(originalBounds)}
-        pathOptions={{
-          color: "red",
-          weight: 2,
-          fillOpacity: 0.1,
-        }}
-      />
-      <Rectangle
-        bounds={convertToLeafletBounds(finalExpandedBounds)}
-        pathOptions={{
-          color: "blue",
-          weight: 2,
-          fillOpacity: 0.1,
-        }}
-      />
-    </>
-  );
-}
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CountryData {
   name: string;
   type: string;
-  adminISO: string;
+  adm0_iso: string;
   continent: string;
   subregion: string;
   bbox: [number, number, number, number];
   expanded_bbox: [number, number, number, number];
 }
 
-async function fetchNextCountry(currentCountry: string): Promise<CountryData> {
+async function fetchNextCountry(
+  currentCountry: string,
+  currentContinent: string,
+): Promise<CountryData> {
   const url = "http://localhost:8080/api/next-country";
 
   try {
     const response = await fetch(url, {
       method: "POST",
-      body: JSON.stringify({ current_country: currentCountry }),
+      body: JSON.stringify({
+        current_country: currentCountry,
+        continent: currentContinent,
+      }),
     });
 
     if (!response.ok) {
@@ -103,10 +52,15 @@ async function fetchNextCountry(currentCountry: string): Promise<CountryData> {
   }
 }
 
+const WORLDMAPBOUNDS: [number, number, number, number] = [-180, -56, 180, 84];
+
 function GameContainer() {
   const [gameStarted, setGameStarted] = useState(false);
   const [targetCountry, setTargetCountry] = useState<CountryData | null>(null);
-  const [countryBounds, setCountryBounds] = useState<[number, number, number, number] | null>(null);
+  const [targetContinent, setTargetContinent] = useState<string>("all");
+  const [viewBounds, setViewBounds] = useState<
+    [number, number, number, number] | null
+  >(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,21 +70,33 @@ function GameContainer() {
   const startGame = () => {
     setGameStarted(true);
     selectRandomCountry();
-  }
+  };
+
+  const resetGameState = () => {
+    setAttempts(0);
+    setTargetCountry(null);
+    setIsCorrect(false);
+    setError(null);
+    setMessage(null);
+  };
+
+  const resetMapView = () => {
+    setViewBounds(WORLDMAPBOUNDS);
+  };
 
   // Function to select a random country
-  const selectRandomCountry = useCallback(async () => {
+  const selectRandomCountry = async () => {
     setIsLoading(true);
-    setError(null);
-    setAttempts(0);
-    setIsCorrect(false);
+    resetGameState();
 
     try {
-      const data = await fetchNextCountry(targetCountry?.adminISO || "ZZZ");
+      const data = await fetchNextCountry(
+        targetCountry?.adm0_iso || "ZZZ",
+        targetContinent,
+      );
       setTargetCountry(data);
-      setMessage(null);
       if (data.expanded_bbox) {
-        setCountryBounds(data.expanded_bbox);
+        setViewBounds(data.expanded_bbox);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch country");
@@ -138,7 +104,15 @@ function GameContainer() {
     } finally {
       setIsLoading(false);
     }
-  }, [targetCountry?.adminISO]);
+  };
+
+  const onContinentChange = (continent: string) => {
+    setGameStarted(false);
+    resetGameState();
+    resetMapView();
+
+    setTargetContinent(continent);
+  };
 
   const onCountryClick = useCallback(
     (feature: Feature) => {
@@ -156,11 +130,11 @@ function GameContainer() {
     [targetCountry, attempts],
   );
 
-  const countryStyle: StyleFunction<any> = useCallback(
+  const countryStyle: StyleFunction = useCallback(
     (feature) => {
       if (!feature) {
         return {
-          fillColor: "#cccccc",
+          fillColor: "#6e6a86",
           weight: 1,
           opacity: 1,
           color: "white",
@@ -170,10 +144,10 @@ function GameContainer() {
 
       if (isCorrect && feature.properties?.name === targetCountry?.name) {
         return {
-          fillColor: "green",
+          fillColor: "#31748f",
           weight: 1,
           opacity: 1,
-          color: "white",
+          color: "#ebbcba",
           fillOpacity: 1,
         };
       }
@@ -189,62 +163,78 @@ function GameContainer() {
       }
 
       return {
-        fillColor: "#cccccc",
-        color: "white",
+        fillColor: "#6e6a86",
+        color: "#ebbcba",
         weight: 1,
         opacity: 1,
         fillOpacity: 1,
       };
     },
-    [targetCountry, attempts],
+    [targetCountry, attempts, isCorrect],
   );
 
   return (
     <div className="game-container w-full h-full p-4">
+      <div className="flex justify-between items-center mb-2">
+        <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
+        <Select
+          value={targetContinent}
+          onValueChange={(v) => {
+            onContinentChange(v);
+          }}
+        >
+          <SelectTrigger className="w-[180px] text-rp-text">
+            <SelectValue placeholder="World" />
+          </SelectTrigger>
+          <SelectContent className="bg-rp-overlay z-9999">
+            <SelectItem value="all" className="text-rp-text z-9999">
+              World 
+            </SelectItem>
+            <SelectItem value="africa" className="text-rp-text z-9999">
+              Africa
+            </SelectItem>
+            <SelectItem value="asia" className="text-rp-text">
+              Asia
+            </SelectItem>
+            <SelectItem value="europe" className="text-rp-text">
+              Europe
+            </SelectItem>
+            <SelectItem value="northamerica" className="text-rp-text">
+              North America
+            </SelectItem>
+            <SelectItem value="oceania" className="text-rp-text">
+              Oceania
+            </SelectItem>
+            <SelectItem value="southamerica" className="text-rp-text">
+              South America
+            </SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
       {!gameStarted && (
         <div className="absolute w-full h-full flex justify-center items-center z-9999">
           <Button onClick={() => startGame()}>Start Game</Button>
         </div>
       )}
-      <MapContainer
-        center={[20, 0]}
-        zoom={2}
-        scrollWheelZoom={false}
-        dragging={false}
-        zoomControl={false}
-        doubleClickZoom={false}
-        touchZoom={false}
-        boxZoom={false}
-        keyboard={false}
-        style={{ height: "80vh", width: "100%" }}
-      >
-        <GeoJSON
-          data={countryGeoJSON as FeatureCollection}
-          style={countryStyle}
-          eventHandlers={{
-            click: (e) => {
-              onCountryClick(e.propagatedFrom.feature);
-            },
-          }}
-        />
-        <ZoomToCountry bounds={countryBounds} expandedBounds={countryBounds} />
-      </MapContainer>
+      <WorldMap
+        viewBounds={viewBounds || WORLDMAPBOUNDS}
+        onCountryClick={onCountryClick}
+        countryStyle={countryStyle}
+      />
       <div className="controls flex flex-col gap-2 justify-center items-center">
         {error && <div className="error-message">{error}</div>}
-        {targetCountry && (
-          <div className="target-country">
+        {targetCountry && !isCorrect && (
+          <div className="target-country text-rp-text">
             Target Country: {targetCountry.name}
           </div>
         )}
         {message && (
-          <div
-            className={`message ${message.startsWith("Correct") ? "correct" : "wrong"}`}
-          >
+          <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
             {message}
-            {message.startsWith("Correct") && attempts > 0 && (
-              <Button onClick={() => selectRandomCountry()}>Next Country</Button>
-            )}
           </div>
+        )}
+        {isCorrect && (
+          <Button onClick={() => selectRandomCountry()}>Next Country</Button>
         )}
       </div>
     </div>
