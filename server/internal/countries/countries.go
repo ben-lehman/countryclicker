@@ -28,7 +28,7 @@ type ContinentData struct {
 type CountryData struct {
 	Name      string     `json:"name"`
 	Type      string     `json:"type"`
-	AdminISO  string     `json:"adm0_iso"`
+	AdminISO  string     `json:"adminISO"`
 	Continent string     `json:"continent"`
 	Subregion string     `json:"subregion"`
 	Bbox      [4]float64 `json:"bbox"` // [west, south, east, north]

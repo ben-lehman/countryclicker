@@ -36,7 +36,7 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 
 	var countriesList countries.CountriesData
 	var expandedBbox [4]float64
-	if params.Continent == "" {
+	if params.Continent == "" || params.Continent == "all" {
 		countriesList = mapData.AllCountries
 	} else {
 		countriesList, expandedBbox, err = getCountriesFromContinent(mapData, params.Continent)
@@ -57,7 +57,7 @@ func (h *Handlers) GetNextCountry(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if params.Continent == "" {
+	if params.Continent == "" || params.Continent == "all" {
 		expandedBbox = ExpandBoundingBox(nextCountry.Bbox)
 	}
 	logger.Printf("Sending next country: %s\n", nextCountry.AdminISO)
@@ -97,7 +97,7 @@ func ExpandBoundingBox(bbox [4]float64) [4]float64 {
 	expansionFactor := rand.Intn(maxExpansionFactor-minExpansionFactor) + minExpansionFactor
 
 	// max boundaries of world map
-	WESTBOUND, SOUTHBOUND, EASTBOUND, NORTHBOUND := -180.0, -90.0, 180.0, 90.0
+	WESTBOUND, SOUTHBOUND, EASTBOUND, NORTHBOUND := -180.0, -55.7, 180.0, 83.7
 	west, south, east, north := bbox[0], bbox[1], bbox[2], bbox[3]
 
 	width := east - west
