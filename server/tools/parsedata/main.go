@@ -18,7 +18,7 @@ type FeatureCollection struct {
 	Type     string    `json:"type"` // Should be "FeatureCollection"
 	Features []Feature `json:"features"`
 }
- 
+
 type Feature struct {
 	Type       string     `json:"type"` // Should be "Feature"
 	Geometry   Geometry   `json:"geometry"`
@@ -49,14 +49,14 @@ type Properties struct {
 //    - add continent bbox
 
 func main() {
-	filterGeoJSON()
+	// filterGeoJSON()
 	geoJSONToCountryList()
 	groupCountryListByContinent()
 }
 
 func filterGeoJSON() {
 	inputPath := "../../../data/countriesv4.geo.json"
-	outputPath := "../../../data/countriesv4filtered.geo.json"
+	outputPath := "../../../data/countriesv4francefix.geo.json"
 
 	jsonFile, err := os.Open(inputPath)
 	if err != nil {
@@ -105,7 +105,7 @@ func filterGeoJSON() {
 }
 
 func geoJSONToCountryList() {
-	inputPath := "../../../data/countriesfilteredv4.geo.json"
+	inputPath := "../../../data/countriesv4francefix.geo.json"
 	outputPath := "../../data/countries-list.json"
 
 	jsonFile, err := os.Open(inputPath)
@@ -164,8 +164,8 @@ type ContinentData struct {
 }
 
 func groupCountryListByContinent() {
-	inputPath := "../../../data/countriesv4filtered.geo.json"
-  inputListPath := "../../data/countries-list.json"
+	inputPath := "../../../data/countriesv4francefix.geo.json"
+	inputListPath := "../../data/countries-list.json"
 	outputDir := "../../data/"
 
 	// read countries list
@@ -187,10 +187,28 @@ func groupCountryListByContinent() {
 
 	continentFeatures := make(map[string][]*geojson.Feature)
 	continentBbox := make(map[string][4]float64)
+	worldOverallBound := orb.Bound{}
+  firstPass := false
 	for _, feature := range fc.Features {
 		cont := feature.Properties.MustString("continent")
 		cont = strings.ToLower(strings.ReplaceAll(cont, " ", ""))
 		continentFeatures[cont] = append(continentFeatures[cont], feature)
+
+		featureBound := feature.Geometry.Bound()
+		if featureBound.IsEmpty() {
+			log.Printf("Feature %v has empty/invalid geometry bound, skipping", feature.ID)
+			continue
+		}
+
+		if firstPass {
+			worldOverallBound = featureBound
+			firstPass = false
+		} else {
+			worldOverallBound = worldOverallBound.Extend(featureBound.Min)
+			worldOverallBound = worldOverallBound.Extend(featureBound.Max)
+		}
+
+    log.Printf("**** world bound: %v", worldOverallBound)
 	}
 
 	for cont, features := range continentFeatures {
@@ -202,6 +220,11 @@ func groupCountryListByContinent() {
 				log.Printf("Feature %v has nil geometry, skipping", feature.ID)
 				continue
 			}
+
+      // skip russia since it's HUGE
+      if feature.Properties.MustString("adm0_iso") == "RUS" {
+        continue
+      }
 
 			featureBound := feature.Geometry.Bound()
 			if featureBound.IsEmpty() {
@@ -225,7 +248,7 @@ func groupCountryListByContinent() {
 			overallBound.Max.Lat(), // North
 		}
 		continentBbox[cont] = bbox
-    log.Println("cont bbox", continentBbox)
+		log.Println("cont bbox", continentBbox)
 	}
 
 	// read countries list
@@ -250,7 +273,7 @@ func groupCountryListByContinent() {
 	Continents := make(map[string]ContinentData)
 	for _, country := range countriesList {
 		cont := strings.ToLower(country.Continent)
-    cont = strings.ReplaceAll(cont, " ", "")
+		cont = strings.ReplaceAll(cont, " ", "")
 		Continents[cont] = ContinentData{
 			Bbox:      continentBbox[cont],
 			Countries: append(Continents[cont].Countries, country),
