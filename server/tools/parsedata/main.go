@@ -42,16 +42,95 @@ type Properties struct {
 	Bbox      [4]float64 `json:"bbox"` // [west, south, east, north]
 }
 
+type NewFeatureCollection struct {
+	Type     string       `json:"type"` // Should be "FeatureCollection"
+	Features []NewFeature `json:"features"`
+}
+
+type NewFeature struct {
+	Type       string        `json:"type"` // Should be "Feature"
+	Geometry   Geometry      `json:"geometry"`
+	Properties NewProperties `json:"properties"`
+}
+
+type NewProperties struct {
+	Name      string     `json:"name"`
+	Type      string     `json:"type"`
+	AdminISO  string     `json:"adminISO"`
+	Continent string     `json:"continent"`
+	Subregion string     `json:"subregion"`
+	Bbox      [4]float64 `json:"bbox"` // [west, south, east, north]
+}
+
 // original countries geoJSON
 // filter original
 // geoJSONtoCountryList
 // geoJSON to Continent
-//    - add continent bbox
-
+//   - add continent bbox
 func main() {
+  // renamePropOneShot()
 	// filterGeoJSON()
-	geoJSONToCountryList()
-	groupCountryListByContinent()
+	// geoJSONToCountryList()
+	// groupCountryListByContinent()
+}
+
+func renamePropOneShot() {
+	inputPath := "../../../data/countriesv4francefix.geo.json"
+	outputPath := "../../../data/countriesv5.geo.json"
+
+	jsonFile, err := os.Open(inputPath)
+	if err != nil {
+		log.Fatalf("Unable to open country data file at %s: %v", inputPath, err)
+	}
+	defer jsonFile.Close()
+
+	byteData, err := io.ReadAll(jsonFile)
+	if err != nil {
+		log.Fatalf("Unable to read jsonFile %s: %v", inputPath, err)
+	}
+
+	var featureCollection FeatureCollection
+	err = json.Unmarshal(byteData, &featureCollection)
+	if err != nil {
+		log.Fatalf("Unable to unmarshal byteData: %v", err)
+	}
+
+	var filteredCollection NewFeatureCollection
+	filteredCollection.Type = featureCollection.Type
+	for _, feature := range featureCollection.Features {
+		newProperties := NewProperties{
+			Name:      feature.Properties.Name,
+			Type:      feature.Properties.AdminISO,
+			AdminISO:  feature.Properties.AdminISO,
+			Continent: feature.Properties.Continent,
+			Subregion: feature.Properties.Subregion,
+			Bbox:      feature.Properties.Bbox,
+		}
+
+		filteredCollection.Features = append(filteredCollection.Features, NewFeature{
+			Type:       feature.Type,
+			Geometry:   feature.Geometry,
+			Properties: newProperties,
+		})
+	}
+
+	parsedJSON, err := json.Marshal(filteredCollection)
+	if err != nil {
+		log.Fatalf("Unable to marshal filtered collection: %v", err)
+	}
+
+	parsedFile, err := os.Create(outputPath)
+	if err != nil {
+		log.Fatalf("Unable to create file at %s, %v", outputPath, err)
+	}
+	defer parsedFile.Close()
+
+	err = os.WriteFile(outputPath, parsedJSON, 0644)
+	if err != nil {
+		log.Fatalf("Unable to copy file %s to %s, %v", inputPath, outputPath, err)
+	}
+
+	fmt.Printf("Successfully filtered data from %s to %s", inputPath, outputPath)
 }
 
 func filterGeoJSON() {
@@ -188,7 +267,7 @@ func groupCountryListByContinent() {
 	continentFeatures := make(map[string][]*geojson.Feature)
 	continentBbox := make(map[string][4]float64)
 	worldOverallBound := orb.Bound{}
-  firstPass := false
+	firstPass := false
 	for _, feature := range fc.Features {
 		cont := feature.Properties.MustString("continent")
 		cont = strings.ToLower(strings.ReplaceAll(cont, " ", ""))
@@ -208,7 +287,7 @@ func groupCountryListByContinent() {
 			worldOverallBound = worldOverallBound.Extend(featureBound.Max)
 		}
 
-    log.Printf("**** world bound: %v", worldOverallBound)
+		log.Printf("**** world bound: %v", worldOverallBound)
 	}
 
 	for cont, features := range continentFeatures {
@@ -221,10 +300,10 @@ func groupCountryListByContinent() {
 				continue
 			}
 
-      // skip russia since it's HUGE
-      if feature.Properties.MustString("adm0_iso") == "RUS" {
-        continue
-      }
+			// skip russia since it's HUGE
+			if feature.Properties.MustString("adm0_iso") == "RUS" {
+				continue
+			}
 
 			featureBound := feature.Geometry.Bound()
 			if featureBound.IsEmpty() {
