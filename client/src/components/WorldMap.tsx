@@ -1,5 +1,5 @@
 import { MapContainer, GeoJSON, useMap, Rectangle } from "react-leaflet";
-import countryGeoJSON from "../../../data/countriesv4francefix.geo.json";
+import countryGeoJSON from "../../../data/countriesv5.geo.json";
 import { Feature, FeatureCollection } from "geojson";
 import { LatLngBoundsExpression, StyleFunction } from "leaflet";
 import { useEffect } from "react";
@@ -79,9 +79,8 @@ function ZoomToCountry({
 
   // Now we know bounds and expandedBounds are not null
   const originalBounds: [number, number, number, number] = bounds;
-  const finalExpandedBounds: [number, number, number, number] = expandedBounds;
 
-  // return; // used for debugging expanded bounds. remove before production
+  return; // used for debugging expanded bounds. remove before production
 
   return (
     <>
@@ -104,5 +103,7 @@ function ZoomToCountry({
     </>
   );
 }
+
+
 
 export default WorldMap;

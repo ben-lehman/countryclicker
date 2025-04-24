@@ -2,6 +2,7 @@ import { Feature } from "geojson";
 import { useCallback, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import WorldMap from "./WorldMap.tsx";
+import { getCountryList, getExpandedBbox, continentViewBox, CountryData, WORLDMAPBOUNDS } from "@/data/WorldMapData.ts";
 import { StyleFunction } from "leaflet";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,57 +13,43 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface CountryData {
-  name: string;
-  type: string;
-  adm0_iso: string;
-  continent: string;
-  subregion: string;
-  bbox: [number, number, number, number];
-  expanded_bbox: [number, number, number, number];
-}
-
 async function fetchNextCountry(
   currentCountry: string,
   currentContinent: string,
 ): Promise<CountryData> {
-  const url = "http://localhost:8080/api/next-country";
+  const countryList = await getCountryList(currentContinent)
+  let nextCountry: CountryData;
+  
+  while (true) {
+    const randomIndex = Math.floor(Math.random() * countryList.length)
+    nextCountry = countryList[randomIndex]
 
-  try {
-    const response = await fetch(url, {
-      method: "POST",
-      body: JSON.stringify({
-        current_country: currentCountry,
-        continent: currentContinent,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+    if (nextCountry.adminISO !== currentCountry) {
+      break
     }
+  } 
 
-    const data: CountryData = await response.json();
-    return data;
-  } catch (error) {
-    if (error instanceof Error) {
-      throw new Error(error.message);
-    } else {
-      throw new Error(`Unable to fetch next country ${error}`);
-    }
-  }
+  return nextCountry;
 }
 
-const WORLDMAPBOUNDS: [number, number, number, number] = [-180, -56, 180, 84];
+enum Continent {
+  All = "all",
+  Africa = "africa",
+  Asia = "asia",
+  Europe = "europe",
+  NorthAmerica = "northamerica",
+  Oceania = "oceania",
+  SouthAmerica = "southamerica"
+}
 
 function GameContainer() {
   const [gameStarted, setGameStarted] = useState(false);
   const [targetCountry, setTargetCountry] = useState<CountryData | null>(null);
-  const [targetContinent, setTargetContinent] = useState<string>("all");
+  const [targetContinent, setTargetContinent] = useState<Continent>(Continent.All);
   const [viewBounds, setViewBounds] = useState<
     [number, number, number, number] | null
   >(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [isCorrect, setIsCorrect] = useState(false);
@@ -86,27 +73,30 @@ function GameContainer() {
 
   // Function to select a random country
   const selectRandomCountry = async () => {
-    setIsLoading(true);
     resetGameState();
 
     try {
       const data = await fetchNextCountry(
-        targetCountry?.adm0_iso || "ZZZ",
+        targetCountry?.adminISO || "ZZZ",
         targetContinent,
       );
       setTargetCountry(data);
-      if (data.expanded_bbox) {
-        setViewBounds(data.expanded_bbox);
+
+      if(targetContinent === Continent.All) {
+        // get expanded bbox
+        const expandedBbox = getExpandedBbox(data.bbox)
+        setViewBounds(expandedBbox)
+      } else {
+       const continentViewBound = continentViewBox[targetContinent]
+       setViewBounds(continentViewBound)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch country");
       console.error("Error fetching country:", err);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const onContinentChange = (continent: string) => {
+  const onContinentChange = (continent: Continent) => {
     setGameStarted(false);
     resetGameState();
     resetMapView();
@@ -179,7 +169,7 @@ function GameContainer() {
         <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
         <Select
           value={targetContinent}
-          onValueChange={(v) => {
+          onValueChange={(v: Continent) => {
             onContinentChange(v);
           }}
         >
@@ -187,25 +177,25 @@ function GameContainer() {
             <SelectValue placeholder="World" />
           </SelectTrigger>
           <SelectContent className="bg-rp-overlay z-9999">
-            <SelectItem value="all" className="text-rp-text z-9999">
+            <SelectItem value={Continent.All} className="text-rp-text z-9999">
               World 
             </SelectItem>
-            <SelectItem value="africa" className="text-rp-text z-9999">
+            <SelectItem value={Continent.Africa} className="text-rp-text z-9999">
               Africa
             </SelectItem>
-            <SelectItem value="asia" className="text-rp-text">
+            <SelectItem value={Continent.Asia} className="text-rp-text">
               Asia
             </SelectItem>
-            <SelectItem value="europe" className="text-rp-text">
+            <SelectItem value={Continent.Europe} className="text-rp-text">
               Europe
             </SelectItem>
-            <SelectItem value="northamerica" className="text-rp-text">
+            <SelectItem value={Continent.NorthAmerica} className="text-rp-text">
               North America
             </SelectItem>
-            <SelectItem value="oceania" className="text-rp-text">
+            <SelectItem value={Continent.Oceania} className="text-rp-text">
               Oceania
             </SelectItem>
-            <SelectItem value="southamerica" className="text-rp-text">
+            <SelectItem value={Continent.SouthAmerica} className="text-rp-text">
               South America
             </SelectItem>
           </SelectContent>
