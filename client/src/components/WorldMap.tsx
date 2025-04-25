@@ -34,6 +34,14 @@ function WorldMap({
           click: (e) => {
             onCountryClick(e.propagatedFrom.feature);
           },
+          mouseover: (e) => {
+            const layer = e.propagatedFrom
+            layer.setStyle({fillColor: "#908caa"})
+          },
+          mouseout: (e) => {
+            const layer = e.propagatedFrom
+            e.target.resetStyle(layer)
+          }
         }}
       />
       <ZoomToCountry

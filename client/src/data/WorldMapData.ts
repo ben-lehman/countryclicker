@@ -12,6 +12,16 @@ export interface ContinentData {
   bbox: [number, number, number, number] | null;
 }
 
+export enum Continent {
+  All = "all",
+  Africa = "africa",
+  Asia = "asia",
+  Europe = "europe",
+  NorthAmerica = "northamerica",
+  Oceania = "oceania",
+  SouthAmerica = "southamerica"
+}
+
 export const WORLDMAPBOUNDS: [number, number, number, number] = [-180, -55.7, 180, 83.7];
 
 export const continentViewBox: {[key: string]: [number, number, number, number]} = {
@@ -21,6 +31,19 @@ export const continentViewBox: {[key: string]: [number, number, number, number]}
   "northamerica": [-171.79111060289122,7.220541490096537,-12.20855,70],
   "oceania": [113.33895307826242,-46.641235446967876,180,-2.500002129734007],
   "southamerica": [-81.41094255239946,-55.61183,-34.729993455533034,12.437303168177309],
+}
+
+export async function getCountryGuessList(continent: Continent) {
+  const countryList = await getCountryList(continent)
+
+  // fisher yates shuffle
+  for(let i = countryList.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [countryList[i], countryList[j]] = [countryList[j], countryList[i]]
+  }
+  
+  return countryList
+
 }
 
 

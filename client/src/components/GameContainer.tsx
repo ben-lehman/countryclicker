@@ -1,51 +1,45 @@
 import { Feature } from "geojson";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import WorldMap from "./WorldMap.tsx";
-import { getCountryList, getExpandedBbox, continentViewBox, CountryData, WORLDMAPBOUNDS } from "@/data/WorldMapData.ts";
+import StartMenu from "./StartMenu.tsx";
+import {
+  getCountryList,
+  getExpandedBbox,
+  Continent,
+  continentViewBox,
+  CountryData,
+  WORLDMAPBOUNDS,
+  getCountryGuessList,
+} from "@/data/WorldMapData.ts";
 import { StyleFunction } from "leaflet";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 async function fetchNextCountry(
   currentCountry: string,
   currentContinent: string,
 ): Promise<CountryData> {
-  const countryList = await getCountryList(currentContinent)
+  const countryList = await getCountryList(currentContinent);
   let nextCountry: CountryData;
-  
+
   while (true) {
-    const randomIndex = Math.floor(Math.random() * countryList.length)
-    nextCountry = countryList[randomIndex]
+    const randomIndex = Math.floor(Math.random() * countryList.length);
+    nextCountry = countryList[randomIndex];
 
     if (nextCountry.adminISO !== currentCountry) {
-      break
+      break;
     }
-  } 
+  }
 
   return nextCountry;
-}
-
-enum Continent {
-  All = "all",
-  Africa = "africa",
-  Asia = "asia",
-  Europe = "europe",
-  NorthAmerica = "northamerica",
-  Oceania = "oceania",
-  SouthAmerica = "southamerica"
 }
 
 function GameContainer() {
   const [gameStarted, setGameStarted] = useState(false);
   const [targetCountry, setTargetCountry] = useState<CountryData | null>(null);
-  const [targetContinent, setTargetContinent] = useState<Continent>(Continent.All);
+  const [targetContinent, setTargetContinent] = useState<Continent>(
+    Continent.All,
+  );
   const [viewBounds, setViewBounds] = useState<
     [number, number, number, number] | null
   >(null);
@@ -53,10 +47,15 @@ function GameContainer() {
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [countryGuessList, setCountryGuessList] = useState<CountryData[]>([]);
+  const [guessListPosition, setGuessListPosition] = useState<number>(0);
 
-  const startGame = () => {
+  const handleGameStart = async (continent: Continent) => {
+    console.log("cont", continent);
+    setTargetContinent(continent);
     setGameStarted(true);
-    selectRandomCountry();
+    const guessList = await getCountryGuessList(continent);
+    setCountryGuessList(guessList);
   };
 
   const resetGameState = () => {
@@ -82,13 +81,13 @@ function GameContainer() {
       );
       setTargetCountry(data);
 
-      if(targetContinent === Continent.All) {
+      if (targetContinent === Continent.All) {
         // get expanded bbox
-        const expandedBbox = getExpandedBbox(data.bbox)
-        setViewBounds(expandedBbox)
+        const expandedBbox = getExpandedBbox(data.bbox);
+        setViewBounds(expandedBbox);
       } else {
-       const continentViewBound = continentViewBox[targetContinent]
-       setViewBounds(continentViewBound)
+        const continentViewBound = continentViewBox[targetContinent];
+        setViewBounds(continentViewBound);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch country");
@@ -96,13 +95,26 @@ function GameContainer() {
     }
   };
 
-  const onContinentChange = (continent: Continent) => {
-    setGameStarted(false);
+  const selectNextCountry = () => {
     resetGameState();
-    resetMapView();
 
-    setTargetContinent(continent);
+    const nextCountry = countryGuessList[guessListPosition];
+    setTargetCountry(nextCountry);
+    if (targetContinent === Continent.All) {
+      // get expanded bbox
+      const expandedBbox = getExpandedBbox(nextCountry.bbox);
+      setViewBounds(expandedBbox);
+    } else {
+      const continentViewBound = continentViewBox[targetContinent];
+      setViewBounds(continentViewBound);
+    }
   };
+
+  useEffect(() => {
+    if (countryGuessList.length > 0) {
+      selectNextCountry();
+    }
+  }, [countryGuessList]);
 
   const onCountryClick = useCallback(
     (feature: Feature) => {
@@ -110,8 +122,13 @@ function GameContainer() {
       const countryName = feature.properties?.name;
       const targetName = targetCountry?.name;
 
+      // TODO: log guess in stats
+
       if (targetName && countryName && countryName === targetName) {
         setIsCorrect(true);
+        // TODO: check if at end of guessList
+        // if yes, then show end screen
+        setGuessListPosition((pos) => pos + 1);
         setMessage(`Correct! You found ${countryName}`);
       } else if (countryName) {
         setMessage(`Wrong! That was ${countryName}. Try again!`);
@@ -144,7 +161,7 @@ function GameContainer() {
 
       if (feature.properties?.name === targetCountry?.name && attempts >= 3) {
         return {
-          fillColor: "lightblue",
+          fillColor: "#c4a7e7",
           weight: 1,
           opacity: 1,
           color: "white",
@@ -167,66 +184,38 @@ function GameContainer() {
     <div className="game-container w-full h-full p-4">
       <div className="flex justify-between items-center mb-2">
         <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
-        <Select
-          value={targetContinent}
-          onValueChange={(v: Continent) => {
-            onContinentChange(v);
-          }}
-        >
-          <SelectTrigger className="w-[180px] text-rp-text">
-            <SelectValue placeholder="World" />
-          </SelectTrigger>
-          <SelectContent className="bg-rp-overlay z-9999">
-            <SelectItem value={Continent.All} className="text-rp-text z-9999">
-              World 
-            </SelectItem>
-            <SelectItem value={Continent.Africa} className="text-rp-text z-9999">
-              Africa
-            </SelectItem>
-            <SelectItem value={Continent.Asia} className="text-rp-text">
-              Asia
-            </SelectItem>
-            <SelectItem value={Continent.Europe} className="text-rp-text">
-              Europe
-            </SelectItem>
-            <SelectItem value={Continent.NorthAmerica} className="text-rp-text">
-              North America
-            </SelectItem>
-            <SelectItem value={Continent.Oceania} className="text-rp-text">
-              Oceania
-            </SelectItem>
-            <SelectItem value={Continent.SouthAmerica} className="text-rp-text">
-              South America
-            </SelectItem>
-          </SelectContent>
-        </Select>
       </div>
-      {!gameStarted && (
-        <div className="absolute w-full h-full flex justify-center items-center z-9999">
-          <Button onClick={() => startGame()}>Start Game</Button>
+      {!gameStarted && <StartMenu handleGameStart={handleGameStart} />}
+      <div className={`${!gameStarted && "blur-sm"}`}>
+        <WorldMap
+          viewBounds={viewBounds || WORLDMAPBOUNDS}
+          onCountryClick={onCountryClick}
+          countryStyle={countryStyle}
+        />
+      </div>
+      {gameStarted && (
+        <div className="controls flex flex-col gap-2 justify-center items-center">
+          {error && <div className="error-message">{error}</div>}
+          <div>
+            <span className="text-rp-text">
+              {guessListPosition + 1}/{countryGuessList.length}
+            </span>
+          </div>
+          {targetCountry && !isCorrect && (
+            <div className="target-country text-rp-text">
+              Find <span className="font-bold">{targetCountry.name}</span>
+            </div>
+          )}
+          {message && (
+            <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
+              {message}
+            </div>
+          )}
+          {isCorrect && (
+            <Button onClick={() => selectNextCountry()}>Next Country</Button>
+          )}
         </div>
       )}
-      <WorldMap
-        viewBounds={viewBounds || WORLDMAPBOUNDS}
-        onCountryClick={onCountryClick}
-        countryStyle={countryStyle}
-      />
-      <div className="controls flex flex-col gap-2 justify-center items-center">
-        {error && <div className="error-message">{error}</div>}
-        {targetCountry && !isCorrect && (
-          <div className="target-country text-rp-text">
-            Target Country: {targetCountry.name}
-          </div>
-        )}
-        {message && (
-          <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
-            {message}
-          </div>
-        )}
-        {isCorrect && (
-          <Button onClick={() => selectRandomCountry()}>Next Country</Button>
-        )}
-      </div>
     </div>
   );
 }

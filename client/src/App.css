@@ -31,6 +31,15 @@ body {
   width: 100%;
 }
 
+.start {
+  top: 50%;
+  left: 50%;
+  width: 350px;
+  height: 220px;
+  margin-left: -175px;
+  margin-top: -110px;
+}
+
 /*
 .game-container {
   position: relative;
