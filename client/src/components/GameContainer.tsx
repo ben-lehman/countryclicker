@@ -1,10 +1,8 @@
 import { Feature } from "geojson";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import "leaflet/dist/leaflet.css";
-import WorldMap from "./WorldMap.tsx";
 import StartMenu from "./StartMenu.tsx";
 import {
-  getCountryList,
   getExpandedBbox,
   Continent,
   continentViewBox,
@@ -15,24 +13,7 @@ import {
 import { StyleFunction } from "leaflet";
 import { Button } from "@/components/ui/button";
 
-async function fetchNextCountry(
-  currentCountry: string,
-  currentContinent: string,
-): Promise<CountryData> {
-  const countryList = await getCountryList(currentContinent);
-  let nextCountry: CountryData;
-
-  while (true) {
-    const randomIndex = Math.floor(Math.random() * countryList.length);
-    nextCountry = countryList[randomIndex];
-
-    if (nextCountry.adminISO !== currentCountry) {
-      break;
-    }
-  }
-
-  return nextCountry;
-}
+const WorldMap = lazy(() => import("./WorldMap.tsx"));
 
 function GameContainer() {
   const [gameStarted, setGameStarted] = useState(false);
@@ -66,9 +47,10 @@ function GameContainer() {
     setMessage(null);
   };
 
-  const resetMapView = () => {
+  /** const resetMapView = () => {
     setViewBounds(WORLDMAPBOUNDS);
   };
+  
 
   // Function to select a random country
   const selectRandomCountry = async () => {
@@ -94,6 +76,7 @@ function GameContainer() {
       console.error("Error fetching country:", err);
     }
   };
+  */
 
   const selectNextCountry = () => {
     resetGameState();
@@ -187,14 +170,16 @@ function GameContainer() {
       </div>
       {!gameStarted && <StartMenu handleGameStart={handleGameStart} />}
       <div className={`${!gameStarted && "blur-sm"}`}>
-        <WorldMap
-          viewBounds={viewBounds || WORLDMAPBOUNDS}
-          onCountryClick={onCountryClick}
-          countryStyle={countryStyle}
-        />
+        <Suspense fallback={<div>Loading...</div>}>
+          <WorldMap
+            viewBounds={viewBounds || WORLDMAPBOUNDS}
+            onCountryClick={onCountryClick}
+            countryStyle={countryStyle}
+          />
+        </Suspense>
       </div>
       {gameStarted && (
-        <div className="controls flex flex-col gap-2 justify-center items-center">
+        <div className="controls flex gap-2 justify-between items-center">
           {error && <div className="error-message">{error}</div>}
           <div>
             <span className="text-rp-text">
@@ -202,7 +187,7 @@ function GameContainer() {
             </span>
           </div>
           {targetCountry && !isCorrect && (
-            <div className="target-country text-rp-text">
+            <div className="target-country bg-rp-pine text-rp-text">
               Find <span className="font-bold">{targetCountry.name}</span>
             </div>
           )}

@@ -22,6 +22,8 @@ body {
   margin: 0;
   padding: 0;
   overflow-y: hidden;
+  max-width: 1280px;
+  margin: 0 auto;
   height: 100vh;
   background: #191724;
 }
@@ -38,6 +40,12 @@ body {
   height: 220px;
   margin-left: -175px;
   margin-top: -110px;
+}
+
+.controls {
+  max-width: 300px;
+  height: 100px;
+  margin: 0 auto;
 }
 
 /*

@@ -87,6 +87,7 @@ function ZoomToCountry({
 
   // Now we know bounds and expandedBounds are not null
   const originalBounds: [number, number, number, number] = bounds;
+  const newBounds: [number, number, number, number] = expandedBounds
 
   return; // used for debugging expanded bounds. remove before production
 
@@ -101,7 +102,7 @@ function ZoomToCountry({
         }}
       />
       <Rectangle
-        bounds={convertToLeafletBounds(expandedBounds)}
+        bounds={convertToLeafletBounds(newBounds)}
         pathOptions={{
           color: "blue",
           weight: 2,
