@@ -2,20 +2,77 @@ import { MapContainer, GeoJSON, useMap, Rectangle } from "react-leaflet";
 import countryGeoJSON from "../../../data/countriesv5.geo.json";
 import { Feature, FeatureCollection } from "geojson";
 import { LatLngBoundsExpression, StyleFunction } from "leaflet";
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { CountryData } from "@/data/WorldMapData";
 
 function WorldMap({
   targetCountry,
+  attempts,
   viewBounds,
   onCountryClick,
-  countryStyle,
 }: {
-  targetCountry: CountryData;
+  targetCountry: CountryData | null;
+  attempts: number;
   viewBounds: [number, number, number, number];
   onCountryClick: (feature: Feature) => void;
-  countryStyle: StyleFunction;
 }) {
+  const [activeCountry, setActiveCountry] = useState<string>("");
+
+  const countryStyle: StyleFunction = useCallback(
+    (feature) => {
+      if (!feature) {
+        return {
+          fillColor: "#6e6a86",
+          weight: 1,
+          opacity: 1,
+          color: "white",
+          fillOpacity: 1,
+        };
+      }
+
+      if (
+        activeCountry === feature.properties.adminISO &&
+        feature.properties.adminISO === targetCountry?.adminISO
+      ) {
+        return {
+          fillColor: "#31748f",
+          weight: 1,
+          opacity: 1,
+          color: "#ebbcba",
+          fillOpacity: 1,
+        };
+      }
+
+      if (feature.properties.adminISO === targetCountry?.adminISO && attempts >= 3) {
+        return {
+          fillColor: "#c4a7e7",
+          weight: 1,
+          opacity: 1,
+          color: "white",
+          fillOpacity: 1,
+        };
+      }
+
+      if (
+        activeCountry === feature.properties.adminISO &&
+        activeCountry !== targetCountry?.adminISO
+      ) {
+        return {
+          fillColor: "#eb6f92",
+        };
+      }
+
+      return {
+        fillColor: "#6e6a86",
+        color: "#ebbcba",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 1,
+      };
+    },
+    [activeCountry, targetCountry, attempts],
+  );
+
   return (
     <MapContainer
       center={[20, 0]}
@@ -39,27 +96,23 @@ function WorldMap({
       <GeoJSON
         data={countryGeoJSON as FeatureCollection}
         style={countryStyle}
-        onEachFeature={(feature, layer) => {
-          console.log('binding features!')
-          if (targetCountry.adminISO === feature.properties.adminISO) {
-            layer.bindPopup(`Correct! you found ${feature.properties.name}`, {closeButton: false});
-          } else {
-            layer.bindPopup(`X that's ${feature.properties.name}`, {
-              closeButton: false,
-            });
-          }
-        }}
         eventHandlers={{
           click: (e) => {
-            onCountryClick(e.propagatedFrom.feature);
+            const feature = e.propagatedFrom.feature;
+            setActiveCountry(feature.properties.adminISO);
+            onCountryClick(feature);
           },
           mouseover: (e) => {
             const layer = e.propagatedFrom;
-            layer.setStyle({ fillColor: "#908caa" });
+            if (layer.feature.properties.adminISO !== activeCountry) {
+              layer.setStyle({ fillColor: "#908caa" });
+            }
           },
           mouseout: (e) => {
             const layer = e.propagatedFrom;
-            e.target.resetStyle(layer);
+            if (layer.feature.properties.adminISO !== activeCountry) {
+              e.target.resetStyle(layer);
+            }
           },
         }}
       />
@@ -87,15 +140,10 @@ function ZoomToCountry({
   expandedBounds: [number, number, number, number] | null;
 }) {
   const map = useMap();
-  // SA const test: [number, number, number, number] = [-81.4, -55.6, -34.73, 14.3];
-  // Asia const test: [number, number, number, number] = [26.0, -10.4, 145, 55];
 
   useEffect(() => {
     if (expandedBounds) {
       map.fitBounds(convertToLeafletBounds(expandedBounds));
-      // map.flyToBounds(convertToLeafletBounds(test))
-
-      console.log("zoom info", map.getZoom(), map.getBounds());
     }
   }, [expandedBounds, map]);
 

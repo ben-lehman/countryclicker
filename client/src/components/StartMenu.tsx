@@ -15,14 +15,19 @@ interface StartMenuProps {
 }
 
 function StartMenu({ handleGameStart }: StartMenuProps) {
+  const [gameMode, setGameMode] = useState("world");
   const [targetContinent, setTargetContinent] = useState<Continent>(
     Continent.All,
   );
 
   return (
-    <div className="start absolute flex flex-wrap gap-y-8 justify-center items-center p-8 z-9999 bg-rp-base border-2 border-color-rp-gold">
+    <div className="absolute top-[50%] left-[50%] w-[350px] h-[280px] -ml-[175px] -mt-[140px] flex flex-wrap gap-x-4 justify-center items-center p-8 z-9999 bg-rp-base border-2 border-color-rp-gold">
       <span className="text-rp-text">Select a Game Mode</span>
-      <Tabs defaultValue="world" className="w-full">
+      <Tabs
+        defaultValue="world"
+        className="w-full"
+        onValueChange={(v) => setGameMode(v)}
+      >
         <TabsList className="bg-rp-surface w-full">
           <TabsTrigger
             value="world"
@@ -31,57 +36,66 @@ function StartMenu({ handleGameStart }: StartMenuProps) {
             World
           </TabsTrigger>
           <TabsTrigger
-            value="continents"
+            value="continent"
             className="text-rp-subtle hover:text-rp-text data-[state=active]:text-rp-text bg-rp-surface data-[state=active]:bg-rp-muted/10 cursor-pointer rounded-none"
           >
             Continents
           </TabsTrigger>
         </TabsList>
-        <TabsContent value="world" className="text-rp-text">
-          Guess Countries from the whole world selected at random.
+        <TabsContent value="world">
+          <div className="h-[68px] w-full"></div>
         </TabsContent>
-        <TabsContent value="continents">
-          <Select
-            onValueChange={(v: Continent) => {
-              setTargetContinent(v);
-            }}
-          >
-            <SelectTrigger className="w-[180px] text-rp-text">
-              <SelectValue placeholder="Select Continent" />
-            </SelectTrigger>
-            <SelectContent className="bg-rp-overlay z-9999">
-              <SelectItem
-                value={Continent.Africa}
-                className="text-rp-text"
-              >
-                Africa
-              </SelectItem>
-              <SelectItem value={Continent.Asia} className="text-rp-text">
-                Asia
-              </SelectItem>
-              <SelectItem value={Continent.Europe} className="text-rp-text">
-                Europe
-              </SelectItem>
-              <SelectItem
-                value={Continent.NorthAmerica}
-                className="text-rp-text"
-              >
-                North America
-              </SelectItem>
-              <SelectItem value={Continent.Oceania} className="text-rp-text">
-                Oceania
-              </SelectItem>
-              <SelectItem
-                value={Continent.SouthAmerica}
-                className="text-rp-text"
-              >
-                South America
-              </SelectItem>
-            </SelectContent>
-          </Select>
+        <TabsContent value="continent">
+          <div className="flex justify-center my-4">
+            <Select
+              onValueChange={(v: Continent) => {
+                setTargetContinent(v);
+              }}
+            >
+              <SelectTrigger className="w-[180px] text-rp-text">
+                <SelectValue placeholder="Select Continent" />
+              </SelectTrigger>
+              <SelectContent className="bg-rp-overlay z-9999">
+                <SelectItem value={Continent.Africa} className="text-rp-text">
+                  Africa
+                </SelectItem>
+                <SelectItem value={Continent.Asia} className="text-rp-text">
+                  Asia
+                </SelectItem>
+                <SelectItem value={Continent.Europe} className="text-rp-text">
+                  Europe
+                </SelectItem>
+                <SelectItem
+                  value={Continent.NorthAmerica}
+                  className="text-rp-text"
+                >
+                  North America
+                </SelectItem>
+                <SelectItem value={Continent.Oceania} className="text-rp-text">
+                  Oceania
+                </SelectItem>
+                <SelectItem
+                  value={Continent.SouthAmerica}
+                  className="text-rp-text"
+                >
+                  South America
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </TabsContent>
       </Tabs>
-      <Button onClick={() => handleGameStart(targetContinent)} className="cursor-pointer">
+      <Button
+        disabled={gameMode === "continent" && targetContinent === Continent.All}
+        onClick={() => {
+          if (gameMode === "world") {
+            handleGameStart(Continent.All);
+          } else {
+            handleGameStart(targetContinent);
+          }
+        }}
+        className="bg-rp-muted/10 hover:bg-rp-muted/20 text-rp-text cursor-pointer"
+      >
         Start Game
       </Button>
     </div>
