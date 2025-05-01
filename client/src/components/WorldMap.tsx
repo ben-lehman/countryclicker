@@ -3,15 +3,18 @@ import countryGeoJSON from "../../../data/countriesv5.geo.json";
 import { Feature, FeatureCollection } from "geojson";
 import { LatLngBoundsExpression, StyleFunction } from "leaflet";
 import { useEffect } from "react";
+import { CountryData } from "@/data/WorldMapData";
 
 function WorldMap({
+  targetCountry,
   viewBounds,
   onCountryClick,
-  countryStyle
+  countryStyle,
 }: {
-  viewBounds: [number, number, number, number]
-  onCountryClick: (feature: Feature) => void 
-  countryStyle: StyleFunction
+  targetCountry: CountryData;
+  viewBounds: [number, number, number, number];
+  onCountryClick: (feature: Feature) => void;
+  countryStyle: StyleFunction;
 }) {
   return (
     <MapContainer
@@ -25,29 +28,42 @@ function WorldMap({
       touchZoom={false}
       boxZoom={false}
       keyboard={false}
-      style={{ height: "80vh", width: "100%", backgroundColor: "#1f1d2e" }}
+      style={{
+        height: "80vh",
+        width: "100%",
+        maxWidth: "80rem",
+        margin: "0 auto",
+        backgroundColor: "#1f1d2e",
+      }}
     >
       <GeoJSON
         data={countryGeoJSON as FeatureCollection}
         style={countryStyle}
+        onEachFeature={(feature, layer) => {
+          console.log('binding features!')
+          if (targetCountry.adminISO === feature.properties.adminISO) {
+            layer.bindPopup(`Correct! you found ${feature.properties.name}`, {closeButton: false});
+          } else {
+            layer.bindPopup(`X that's ${feature.properties.name}`, {
+              closeButton: false,
+            });
+          }
+        }}
         eventHandlers={{
           click: (e) => {
             onCountryClick(e.propagatedFrom.feature);
           },
           mouseover: (e) => {
-            const layer = e.propagatedFrom
-            layer.setStyle({fillColor: "#908caa"})
+            const layer = e.propagatedFrom;
+            layer.setStyle({ fillColor: "#908caa" });
           },
           mouseout: (e) => {
-            const layer = e.propagatedFrom
-            e.target.resetStyle(layer)
-          }
+            const layer = e.propagatedFrom;
+            e.target.resetStyle(layer);
+          },
         }}
       />
-      <ZoomToCountry
-        bounds={viewBounds}
-        expandedBounds={viewBounds}
-      />
+      <ZoomToCountry bounds={viewBounds} expandedBounds={viewBounds} />
     </MapContainer>
   );
 }
@@ -87,7 +103,7 @@ function ZoomToCountry({
 
   // Now we know bounds and expandedBounds are not null
   const originalBounds: [number, number, number, number] = bounds;
-  const newBounds: [number, number, number, number] = expandedBounds
+  const newBounds: [number, number, number, number] = expandedBounds;
 
   return; // used for debugging expanded bounds. remove before production
 
@@ -112,7 +128,5 @@ function ZoomToCountry({
     </>
   );
 }
-
-
 
 export default WorldMap;

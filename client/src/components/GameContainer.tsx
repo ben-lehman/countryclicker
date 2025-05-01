@@ -13,7 +13,8 @@ import {
 import { StyleFunction } from "leaflet";
 import { Button } from "@/components/ui/button";
 
-const WorldMap = lazy(() => import("./WorldMap.tsx"));
+// const WorldMap = lazy(() => import("./WorldMap.tsx"));
+import WorldMap from "./WorldMap.tsx";
 
 function GameContainer() {
   const [gameStarted, setGameStarted] = useState(false);
@@ -165,40 +166,54 @@ function GameContainer() {
 
   return (
     <div className="game-container w-full h-full p-4">
-      <div className="flex justify-between items-center mb-2">
+      <div className="flex justify-between items-center mb-2 max-w-7xl mx-auto">
         <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
       </div>
       {!gameStarted && <StartMenu handleGameStart={handleGameStart} />}
       <div className={`${!gameStarted && "blur-sm"}`}>
-        <Suspense fallback={<div>Loading...</div>}>
-          <WorldMap
-            viewBounds={viewBounds || WORLDMAPBOUNDS}
-            onCountryClick={onCountryClick}
-            countryStyle={countryStyle}
-          />
-        </Suspense>
+        {!gameStarted && (
+          <div
+            style={{
+              height: "80vh",
+              width: "100%",
+              backgroundColor: "#1f1d2e",
+            }}
+          ></div>
+        )}
+        {gameStarted && targetCountry && (
+          <Suspense fallback={<div>Loading...</div>}>
+            <WorldMap
+              targetCountry={targetCountry}
+              viewBounds={viewBounds || WORLDMAPBOUNDS}
+              onCountryClick={onCountryClick}
+              countryStyle={countryStyle}
+            />
+          </Suspense>
+        )}
       </div>
       {gameStarted && (
-        <div className="controls flex gap-2 justify-between items-center">
-          {error && <div className="error-message">{error}</div>}
-          <div>
-            <span className="text-rp-text">
-              {guessListPosition + 1}/{countryGuessList.length}
-            </span>
+        <div className="w-full my-4 bg-rp-foam/10">
+         <div className="h-12 max-w-7xl mx-auto px-4 flex justify-between items-center">
+            {error && <div className="error-message">{error}</div>}
+            <div>
+              <span className="text-rp-foam">
+                {guessListPosition + 1}/{countryGuessList.length}
+              </span>
+            </div>
+            {targetCountry && !isCorrect && (
+              <div className="target-country text-rp-foam">
+                Find <span className="font-bold">{targetCountry.name}</span>
+              </div>
+            )}
+            {message && (
+              <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
+                {message}
+              </div>
+            )}
+            {isCorrect && (
+              <Button onClick={() => selectNextCountry()}>Next Country</Button>
+            )}
           </div>
-          {targetCountry && !isCorrect && (
-            <div className="target-country bg-rp-pine text-rp-text">
-              Find <span className="font-bold">{targetCountry.name}</span>
-            </div>
-          )}
-          {message && (
-            <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
-              {message}
-            </div>
-          )}
-          {isCorrect && (
-            <Button onClick={() => selectNextCountry()}>Next Country</Button>
-          )}
         </div>
       )}
     </div>
