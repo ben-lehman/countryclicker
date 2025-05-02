@@ -49,13 +49,14 @@ function GameContainer() {
 
   const resetGameState = () => {
     setAttempts(0);
-    setTargetCountry(null);
+    // setTargetCountry(null);
     setIsCorrect(false);
     setError(null);
     setMessage(null);
   };
 
   const selectNextCountry = () => {
+    console.log('guess pos', guessListPosition)
     resetGameState();
 
     const nextCountry = countryGuessList[guessListPosition];
@@ -67,6 +68,7 @@ function GameContainer() {
       const continentViewBound = continentViewBox[targetContinent];
       setViewBounds(continentViewBound);
     }
+     console.log('next country', nextCountry)
   };
 
   useEffect(() => {
@@ -74,6 +76,12 @@ function GameContainer() {
       selectNextCountry();
     }
   }, [countryGuessList]);
+
+  useEffect(() => {
+    if(isCorrect) {
+      selectNextCountry()
+    }
+  }, [isCorrect])
 
   const onCountryClick = useCallback(
     (feature: Feature) => {
@@ -90,12 +98,13 @@ function GameContainer() {
           setGameState("done");
         }
         setGuessListPosition((pos) => pos + 1);
+        setIsCorrect(true)
         setMessage(`Correct! You found ${countryName}`);
       } else if (countryName) {
         setMessage(`Wrong! That was ${countryName}. Try again!`);
       }
     },
-    [targetCountry, attempts],
+    [targetCountry, attempts, selectNextCountry, guessListPosition],
   );
 
 
@@ -162,7 +171,7 @@ function GameContainer() {
                   {guessListPosition}/{countryGuessList.length}
                 </span>
               </div>
-              {targetCountry && !isCorrect && (
+              {targetCountry && (
                 <div className="target-country text-rp-foam">
                   Find <span className="font-bold">{targetCountry.name}</span>
                 </div>
@@ -171,11 +180,6 @@ function GameContainer() {
                 <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
                   {message}
                 </div>
-              )}
-              {isCorrect && (
-                <Button onClick={() => selectNextCountry()}>
-                  Next Country
-                </Button>
               )}
             </div>
           </div>
