@@ -24,6 +24,10 @@ body {
   font-weight: bold;
 }
 
+.feature-transition {
+  transition: fill 0.5s;
+}
+
 .message {
   padding: 8px 12px;
   border-radius: 4px;

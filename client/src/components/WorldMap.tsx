@@ -1,13 +1,16 @@
 import { MapContainer, GeoJSON, useMap, Rectangle } from "react-leaflet";
 import countryGeoJSON from "../../../data/countriesv5.geo.json";
 import { Feature, FeatureCollection } from "geojson";
-import { LatLngBoundsExpression, StyleFunction } from "leaflet";
-import { useCallback, useEffect, useState } from "react";
+import {
+  LatLngBoundsExpression,
+  LeafletMouseEvent,
+  StyleFunction,
+} from "leaflet";
+import { useEffect, useRef, useState } from "react";
 import { CountryData } from "@/data/WorldMapData";
 
 function WorldMap({
   targetCountry,
-  attempts,
   viewBounds,
   onCountryClick,
 }: {
@@ -17,61 +20,22 @@ function WorldMap({
   onCountryClick: (feature: Feature) => void;
 }) {
   const [activeCountry, setActiveCountry] = useState<string>("");
+  const featureRef = useRef<LeafletMouseEvent>(null);
 
-  const countryStyle: StyleFunction = useCallback(
-    (feature) => {
-      if (!feature) {
-        return {
-          fillColor: "#6e6a86",
-          weight: 1,
-          opacity: 1,
-          color: "white",
-          fillOpacity: 1,
-        };
-      }
+  const setFeatureStyle = (e: LeafletMouseEvent) => {
+    if (featureRef.current) {
+      featureRef.current.target.resetStyle();
+    }
+    featureRef.current = e;
 
-      if (
-        activeCountry === feature.properties.adminISO &&
-        feature.properties.adminISO === targetCountry?.adminISO
-      ) {
-        return {
-          fillColor: "#31748f",
-          weight: 1,
-          opacity: 1,
-          color: "#ebbcba",
-          fillOpacity: 1,
-        };
-      }
-
-      if (feature.properties.adminISO === targetCountry?.adminISO && attempts >= 3) {
-        return {
-          fillColor: "#c4a7e7",
-          weight: 1,
-          opacity: 1,
-          color: "white",
-          fillOpacity: 1,
-        };
-      }
-
-      if (
-        activeCountry === feature.properties.adminISO &&
-        activeCountry !== targetCountry?.adminISO
-      ) {
-        return {
-          fillColor: "#eb6f92",
-        };
-      }
-
-      return {
-        fillColor: "#6e6a86",
-        color: "#ebbcba",
-        weight: 1,
-        opacity: 1,
-        fillOpacity: 1,
-      };
-    },
-    [activeCountry, targetCountry, attempts],
-  );
+    if (
+      e.propagatedFrom.feature.properties.adminISO === targetCountry?.adminISO
+    ) {
+      e.propagatedFrom.setStyle({ fillColor: "#31748f" });
+    } else {
+      e.propagatedFrom.setStyle({ fillColor: "#eb6f92" });
+    }
+  };
 
   return (
     <MapContainer
@@ -100,6 +64,7 @@ function WorldMap({
           click: (e) => {
             const feature = e.propagatedFrom.feature;
             setActiveCountry(feature.properties.adminISO);
+            setFeatureStyle(e);
             onCountryClick(feature);
           },
           mouseover: (e) => {
@@ -143,7 +108,7 @@ function ZoomToCountry({
 
   useEffect(() => {
     if (expandedBounds) {
-      map.fitBounds(convertToLeafletBounds(expandedBounds));
+      map.fitBounds(convertToLeafletBounds(expandedBounds))
     }
   }, [expandedBounds, map]);
 
@@ -176,5 +141,17 @@ function ZoomToCountry({
     </>
   );
 }
+
+const countryStyle: StyleFunction = (feature) => {
+  if (!feature) return {};
+  return {
+    fillColor: "#6e6a86",
+    color: "#ebbcba",
+    weight: 1,
+    opacity: 1,
+    fillOpacity: 1,
+    className: "feature-transition",
+  };
+};
 
 export default WorldMap;
