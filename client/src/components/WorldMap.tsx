@@ -19,6 +19,7 @@ function WorldMap({
   viewBounds: [number, number, number, number];
   onCountryClick: (feature: Feature) => void;
 }) {
+  const [loaded, setLoaded] = useState(false);
   const [activeCountry, setActiveCountry] = useState<string>("");
   const featureRef = useRef<LeafletMouseEvent>(null);
 
@@ -37,52 +38,57 @@ function WorldMap({
     }
   };
 
+  useEffect(() => {
+    setLoaded(true);
+  }, []);
+
   return (
-    <MapContainer
-      center={[20, 0]}
-      zoom={2}
-      zoomSnap={0.1}
-      scrollWheelZoom={false}
-      dragging={false}
-      zoomControl={false}
-      doubleClickZoom={false}
-      touchZoom={false}
-      boxZoom={false}
-      keyboard={false}
-      style={{
-        height: "80vh",
-        width: "100%",
-        maxWidth: "80rem",
-        margin: "0 auto",
-        backgroundColor: "#1f1d2e",
-      }}
-    >
-      <GeoJSON
-        data={countryGeoJSON as FeatureCollection}
-        style={countryStyle}
-        eventHandlers={{
-          click: (e) => {
-            const feature = e.propagatedFrom.feature;
-            setActiveCountry(feature.properties.adminISO);
-            setFeatureStyle(e);
-            onCountryClick(feature);
-          },
-          mouseover: (e) => {
-            const layer = e.propagatedFrom;
-            if (layer.feature.properties.adminISO !== activeCountry) {
-              layer.setStyle({ fillColor: "#908caa" });
-            }
-          },
-          mouseout: (e) => {
-            const layer = e.propagatedFrom;
-            if (layer.feature.properties.adminISO !== activeCountry) {
-              e.target.resetStyle(layer);
-            }
-          },
-        }}
-      />
-      <ZoomToCountry bounds={viewBounds} expandedBounds={viewBounds} />
-    </MapContainer>
+    <div className="bg-rp-surface">
+      <div className={`fade-in ${loaded ? "loaded" : ""}`}>
+        <MapContainer
+          center={[20, 0]}
+          zoom={2}
+          zoomSnap={0.1}
+          scrollWheelZoom={false}
+          dragging={false}
+          zoomControl={false}
+          doubleClickZoom={false}
+          touchZoom={false}
+          boxZoom={false}
+          keyboard={false}
+          className="w-full h-[80vh] max-w-7xl mx-auto bg-rp-surface"
+          style={{
+            background: "#1f1d2e",
+          }}
+        >
+          <GeoJSON
+            data={countryGeoJSON as FeatureCollection}
+            style={countryStyle}
+            eventHandlers={{
+              click: (e) => {
+                const feature = e.propagatedFrom.feature;
+                setActiveCountry(feature.properties.adminISO);
+                setFeatureStyle(e);
+                onCountryClick(feature);
+              },
+              mouseover: (e) => {
+                const layer = e.propagatedFrom;
+                if (layer.feature.properties.adminISO !== activeCountry) {
+                  layer.setStyle({ fillColor: "#908caa" });
+                }
+              },
+              mouseout: (e) => {
+                const layer = e.propagatedFrom;
+                if (layer.feature.properties.adminISO !== activeCountry) {
+                  e.target.resetStyle(layer);
+                }
+              },
+            }}
+          />
+          <ZoomToCountry bounds={viewBounds} expandedBounds={viewBounds} />
+        </MapContainer>
+      </div>
+    </div>
   );
 }
 
@@ -108,7 +114,7 @@ function ZoomToCountry({
 
   useEffect(() => {
     if (expandedBounds) {
-      map.fitBounds(convertToLeafletBounds(expandedBounds))
+      map.fitBounds(convertToLeafletBounds(expandedBounds));
     }
   }, [expandedBounds, map]);
 
