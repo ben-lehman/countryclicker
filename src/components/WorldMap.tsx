@@ -157,18 +157,11 @@ function WorldMap({
       </div>
       {popup.visible && (
         <div
+          className="popup fixed py-2 px-4 rounded-sm text-rp-text z-9999 whitespace-nowrap pointer-events-none border border-rp-gold"
           style={{
-            position: "fixed",
             top: `${popup.y}px`,
             left: `${popup.x}px`,
-            transform: "translateX(15%) translatey(-75%)",
-            padding: "10px 15px",
-            backgroundColor: popup.correct ? "#9ccfd8" : "#eb6f92",
-            color: "white",
-            borderRadius: "5px",
-            zIndex: 1000,
-            whiteSpace: "nowrap",
-            pointerEvents: "none",
+            backgroundColor: popup.correct ? "#31748f" : "#eb6f92",
           }}
         >
           {popup.message}

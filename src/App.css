@@ -28,6 +28,10 @@ body {
   transition: fill 0.5s;
 }
 
+.popup {
+  transform: translateX(15%) translatey(-75%);
+}
+
 .fade-in {
   animation: fadeIn 1s ease;
 }
