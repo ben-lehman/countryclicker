@@ -5,7 +5,6 @@ import {
   useState,
   lazy,
   Suspense,
-  useRef,
 } from "react";
 import "leaflet/dist/leaflet.css";
 import StartMenu from "./StartMenu.tsx";
