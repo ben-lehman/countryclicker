@@ -46,7 +46,6 @@ export async function getCountryGuessList(continent: Continent) {
 
 }
 
-
 /**
 * Take boundary box from a specific country and return an expanded boundary box
 * the targetted country should be fully in view of the expanded boundary box
@@ -84,34 +83,29 @@ export function getExpandedBbox(bbox: [number, number, number, number]):  [numbe
   return [newWest, newSouth, newEast, newNorth]
 }
 
-const dataDirPath = "../data/"
-
 export async function getCountryList(continent: string) {
   let data;
-  let path = "";
   switch (continent) {
     case "africa":
-      path = dataDirPath + 'africa-countries-list.json'
-      data = await import(path)
+      data = await import("./africa-countries-list.json")
       return data.default.countries as CountryData[] 
     case "asia":
-      data = await import(dataDirPath + 'asia-countries-list.json')
+      data = await import('./asia-countries-list.json')
       return data.default.countries as CountryData[] 
     case "europe":
-      data = await import(dataDirPath + 'europe-countries-list.json')
+      data = await import('./europe-countries-list.json')
       return data.default.countries as CountryData[] 
     case "northamerica":
-      data = await import(dataDirPath + 'northamerica-countries-list.json')
+      data = await import('./northamerica-countries-list.json')
       return data.default.countries as CountryData[] 
     case "oceania":
-      data = await import(dataDirPath + 'oceania-countries-list.json')
+      data = await import('./oceania-countries-list.json')
       return data.default.countries as CountryData[]
     case "southamerica":
-      data = await import(dataDirPath + 'southamerica-countries-list.json')
+      data = await import('./southamerica-countries-list.json')
       return data.default.countries as CountryData[] 
     default:
-      path = dataDirPath + 'countries-list.json'
-      data = await import(path)
+      data = await import("./countries-list.json")
       return data.default as CountryData[] 
   }
 }

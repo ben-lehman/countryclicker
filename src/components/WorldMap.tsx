@@ -6,11 +6,12 @@ import {
   LeafletMouseEvent,
   StyleFunction,
 } from "leaflet";
-import { useEffect, useRef, useState } from "react";
-import { CountryData } from "@/data/WorldMapData";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { CountryData, WORLDMAPBOUNDS } from "@/data/WorldMapData";
 
 function WorldMap({
   targetCountry,
+  attempts,
   viewBounds,
   onCountryClick,
 }: {
@@ -19,34 +20,89 @@ function WorldMap({
   viewBounds: [number, number, number, number];
   onCountryClick: (feature: Feature) => void;
 }) {
-  const [loaded, setLoaded] = useState(false);
-  const [activeCountry, setActiveCountry] = useState<string>("");
-  const featureRef = useRef<LeafletMouseEvent>(null);
+  const activeFeatureRef = useRef<LeafletMouseEvent>(null);
+  const correctFeatureRef = useRef<CountryData>(null);
 
   const setFeatureStyle = (e: LeafletMouseEvent) => {
-    if (featureRef.current) {
-      featureRef.current.target.resetStyle();
+    if (activeFeatureRef.current) {
+      activeFeatureRef.current.target.resetStyle();
     }
-    featureRef.current = e;
-
-    if (
-      e.propagatedFrom.feature.properties.adminISO === targetCountry?.adminISO
-    ) {
-      e.propagatedFrom.setStyle({ fillColor: "#31748f" });
-    } else {
-      e.propagatedFrom.setStyle({ fillColor: "#eb6f92" });
-    }
+    activeFeatureRef.current = e;
   };
 
-  useEffect(() => {
-    setLoaded(true);
-  }, []);
+  const countryStyle: StyleFunction = useCallback(
+    (feature) => {
+      if (!feature) return {};
+
+      const featureISO = feature.properties.adminISO;
+      const activeFeatureISO =
+        activeFeatureRef.current?.propagatedFrom.feature.properties.adminISO;
+      const style = {
+        fillColor: "#6e6a86",
+        color: "#ebbcba",
+        weight: 1,
+        opacity: 1,
+        fillOpacity: 1,
+        className: "feature-transition",
+      };
+
+      // correct
+      if (
+        featureISO === activeFeatureISO &&
+        featureISO === correctFeatureRef.current?.adminISO
+      ) {
+        // correct
+        style.fillColor = "#31748f";
+      } else if (featureISO === activeFeatureISO) {
+        // incorrect
+        style.fillColor = "#eb6f92";
+      } else if (attempts >= 3 && featureISO === targetCountry?.adminISO) {
+        // assist
+        style.fillColor = "#c4a7e7";
+      }
+
+      return style;
+    },
+    [attempts, targetCountry?.adminISO],
+  );
+
+  const [popup, setPopup] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    message: "",
+    correct: false,
+  });
+
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showPopup = (e: LeafletMouseEvent) => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    const isCorrect =
+      e.propagatedFrom.feature.properties.adminISO === targetCountry?.adminISO;
+
+    setPopup({
+      visible: true,
+      x: e.originalEvent.clientX,
+      y: e.originalEvent.clientY,
+      message: e.propagatedFrom.feature.properties.name,
+      correct: isCorrect,
+    });
+
+    timeoutRef.current = setTimeout(() => {
+      setPopup((prevState) => ({ ...prevState, visible: false }));
+    }, 1000);
+  };
 
   return (
-    <div className="bg-rp-surface">
-      <div className={`fade-in ${loaded ? "loaded" : ""}`}>
+    <>
+      <div className="fade-in">
         <MapContainer
-          center={[20, 0]}
+          bounds={convertToLeafletBounds(WORLDMAPBOUNDS)}
+          center={[40, 0]}
           zoom={2}
           zoomSnap={0.1}
           scrollWheelZoom={false}
@@ -56,7 +112,7 @@ function WorldMap({
           touchZoom={false}
           boxZoom={false}
           keyboard={false}
-          className="w-full h-[80vh] max-w-7xl mx-auto bg-rp-surface"
+          className="w-full bg-rp-surface"
           style={{
             background: "#1f1d2e",
           }}
@@ -67,28 +123,58 @@ function WorldMap({
             eventHandlers={{
               click: (e) => {
                 const feature = e.propagatedFrom.feature;
-                setActiveCountry(feature.properties.adminISO);
+                correctFeatureRef.current = targetCountry;
                 setFeatureStyle(e);
+                showPopup(e);
                 onCountryClick(feature);
               },
               mouseover: (e) => {
                 const layer = e.propagatedFrom;
-                if (layer.feature.properties.adminISO !== activeCountry) {
+                if (
+                  layer.feature.properties.adminISO !==
+                  activeFeatureRef.current?.propagatedFrom.feature.properties
+                    .adminISO
+                ) {
                   layer.setStyle({ fillColor: "#908caa" });
                 }
               },
               mouseout: (e) => {
                 const layer = e.propagatedFrom;
-                if (layer.feature.properties.adminISO !== activeCountry) {
+                if (
+                  layer.feature.properties.adminISO !==
+                  activeFeatureRef.current?.propagatedFrom.feature.properties
+                    .adminISO
+                ) {
                   e.target.resetStyle(layer);
                 }
               },
             }}
           />
-          <ZoomToCountry bounds={viewBounds} expandedBounds={viewBounds} />
+          {targetCountry && (
+            <ZoomToCountry bounds={viewBounds} expandedBounds={viewBounds} />
+          )}
         </MapContainer>
       </div>
-    </div>
+      {popup.visible && (
+        <div
+          style={{
+            position: "fixed",
+            top: `${popup.y}px`,
+            left: `${popup.x}px`,
+            transform: "translateX(15%) translatey(-75%)",
+            padding: "10px 15px",
+            backgroundColor: popup.correct ? "#9ccfd8" : "#eb6f92",
+            color: "white",
+            borderRadius: "5px",
+            zIndex: 1000,
+            whiteSpace: "nowrap",
+            pointerEvents: "none",
+          }}
+        >
+          {popup.message}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -114,13 +200,14 @@ function ZoomToCountry({
 
   useEffect(() => {
     if (expandedBounds) {
-      map.fitBounds(convertToLeafletBounds(expandedBounds));
+      setTimeout(() => {
+        map.fitBounds(convertToLeafletBounds(expandedBounds));
+      }, 1000);
     }
   }, [expandedBounds, map]);
 
   if (!bounds || !expandedBounds) return null;
 
-  // Now we know bounds and expandedBounds are not null
   const originalBounds: [number, number, number, number] = bounds;
   const newBounds: [number, number, number, number] = expandedBounds;
 
@@ -147,17 +234,5 @@ function ZoomToCountry({
     </>
   );
 }
-
-const countryStyle: StyleFunction = (feature) => {
-  if (!feature) return {};
-  return {
-    fillColor: "#6e6a86",
-    color: "#ebbcba",
-    weight: 1,
-    opacity: 1,
-    fillOpacity: 1,
-    className: "feature-transition",
-  };
-};
 
 export default WorldMap;

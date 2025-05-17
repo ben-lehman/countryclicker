@@ -1,5 +1,12 @@
 import { Feature } from "geojson";
-import { useCallback, useEffect, useState, lazy, Suspense } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  lazy,
+  Suspense,
+  useRef,
+} from "react";
 import "leaflet/dist/leaflet.css";
 import StartMenu from "./StartMenu.tsx";
 import {
@@ -24,7 +31,6 @@ function GameContainer() {
   const [viewBounds, setViewBounds] = useState<
     [number, number, number, number] | null
   >(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempts, setAttempts] = useState(0);
   const [totalAttempts, setTotalAttempts] = useState(0);
@@ -49,10 +55,8 @@ function GameContainer() {
 
   const resetGameState = () => {
     setAttempts(0);
-    // setTargetCountry(null);
     setIsCorrect(false);
     setError(null);
-    setMessage(null);
   };
 
   const selectNextCountry = () => {
@@ -89,17 +93,13 @@ function GameContainer() {
       const targetName = targetCountry?.name;
 
       // TODO: log guess in stats
-
       if (targetName && countryName && countryName === targetName) {
-        setIsCorrect(true);
         if (guessListPosition === countryGuessList.length - 1) {
           setGameState("done");
         }
+
         setGuessListPosition((pos) => pos + 1);
         setIsCorrect(true);
-        setMessage(`Correct! You found ${countryName}`);
-      } else if (countryName) {
-        setMessage(`Wrong! That was ${countryName}. Try again!`);
       }
     },
     [targetCountry, attempts, selectNextCountry, guessListPosition],
@@ -111,23 +111,31 @@ function GameContainer() {
         <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
         <div>
           <Button>Stats</Button>
-          <Button onClick={() => handleGameStart(targetContinent)}>Restart</Button>
+          <Button onClick={() => handleGameStart(targetContinent)}>
+            Restart
+          </Button>
         </div>
       </div>
       {gameState === "start" && <StartMenu handleGameStart={handleGameStart} />}
 
       <div className={`${gameState === "done" && "blur-sm"}`}>
-      <Suspense fallback={<div className="h-[80vh] w-full max-w-7xl mx-auto bg-rp-surface"></div>}>
-          <WorldMap
-            targetCountry={targetCountry}
-            attempts={attempts}
-            viewBounds={viewBounds || WORLDMAPBOUNDS}
-            onCountryClick={onCountryClick}
-          />
+        <Suspense
+          fallback={
+            <div className="w-full h-[80vh] max-w-7xl mx-auto bg-rp-surface"></div>
+          }
+        >
+          <div className="w-full h-[80vh] max-w-7xl mx-auto bg-rp-surface">
+            <WorldMap
+              targetCountry={targetCountry}
+              attempts={attempts}
+              viewBounds={viewBounds || WORLDMAPBOUNDS}
+              onCountryClick={onCountryClick}
+            />
+          </div>
         </Suspense>
       </div>
       {gameState === "running" && (
-        <div className="w-full my-4 bg-rp-foam/10">
+        <div className="w-full max-w-7xl mx-auto my-4 bg-rp-foam/10">
           <div className="h-12 max-w-7xl mx-auto px-4 flex justify-between items-center">
             {error && <div className="error-message">{error}</div>}
             <div>
@@ -138,11 +146,6 @@ function GameContainer() {
             {targetCountry && (
               <div className="target-country text-rp-foam">
                 Find <span className="font-bold">{targetCountry.name}</span>
-              </div>
-            )}
-            {message && (
-              <div className={`message ${isCorrect ? "correct" : "wrong"}`}>
-                {message}
               </div>
             )}
           </div>
