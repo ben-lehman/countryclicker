@@ -1,11 +1,5 @@
 import { Feature } from "geojson";
-import {
-  useCallback,
-  useEffect,
-  useState,
-  lazy,
-  Suspense,
-} from "react";
+import { useCallback, useEffect, useState, lazy, Suspense } from "react";
 import "leaflet/dist/leaflet.css";
 import StartMenu from "./StartMenu.tsx";
 import {
@@ -108,12 +102,14 @@ function GameContainer() {
     <div className="game-container w-full h-full p-4">
       <div className="flex justify-between items-center mb-2 max-w-7xl mx-auto">
         <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
+        {/** 
         <div>
           <Button>Stats</Button>
           <Button onClick={() => handleGameStart(targetContinent)}>
             Restart
           </Button>
         </div>
+        */}
       </div>
       {gameState === "start" && <StartMenu handleGameStart={handleGameStart} />}
 

@@ -157,7 +157,7 @@ function WorldMap({
       </div>
       {popup.visible && (
         <div
-          className="popup fixed py-2 px-4 rounded-sm text-rp-text z-9999 whitespace-nowrap pointer-events-none border border-rp-gold"
+          className="popup fixed py-2 px-4 rounded-sm text-rp-text z-9999 whitespace-nowrap pointer-events-none border border-rp-gold shadow-md"
           style={{
             top: `${popup.y}px`,
             left: `${popup.x}px`,
