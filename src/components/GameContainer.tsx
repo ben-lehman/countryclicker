@@ -99,7 +99,7 @@ function GameContainer() {
   );
 
   return (
-    <div className="game-container w-full h-full p-4">
+    <div className="game-container flex flex-col w-full h-dvh p-4">
       <div className="flex justify-between items-center mb-2 max-w-7xl mx-auto">
         <h1 className="logo text-rp-text pb-0 mb-0">COUNTRY CLICKER</h1>
         {/** 
@@ -113,13 +113,13 @@ function GameContainer() {
       </div>
       {gameState === "start" && <StartMenu handleGameStart={handleGameStart} />}
 
-      <div className={`${gameState === "done" && "blur-sm"}`}>
+      <div className={`${gameState === "done" && "blur-sm"} h-full`}>
         <Suspense
           fallback={
-            <div className="w-full h-[80vh] max-w-7xl mx-auto bg-rp-surface"></div>
+            <div className="w-full h-[80dvh] max-w-7xl mx-auto bg-rp-surface"></div>
           }
         >
-          <div className="w-full h-[80vh] max-w-7xl mx-auto bg-rp-surface">
+          <div className="w-full h-full max-w-7xl mx-auto bg-rp-surface">
             <WorldMap
               targetCountry={targetCountry}
               attempts={attempts}
@@ -148,7 +148,7 @@ function GameContainer() {
       )}
       {gameState === "done" && (
         <>
-          <div className="fade-in absolute top-[50%] left-[50%] w-[350px] h-[280px] -ml-[175px] -mt-[140px] flex flex-wrap gap-x-4 justify-center items-center p-4 z-9999 bg-rp-base border-2 border-color-rp-gold">
+          <div className="fade-in start-menu flex flex-wrap gap-x-4 justify-center items-center p-4 z-9999 bg-rp-base border-2 border-color-rp-gold">
             <span className="w-full text-rp-text text-center">Finished!</span>
             <span className="w-full text-rp-text text-center">
               Accuracy:{" "}

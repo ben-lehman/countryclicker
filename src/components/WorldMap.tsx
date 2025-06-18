@@ -99,7 +99,7 @@ function WorldMap({
 
   return (
     <>
-      <div className="fade-in">
+      <div className="fade-in h-full">
         <MapContainer
           bounds={convertToLeafletBounds(WORLDMAPBOUNDS)}
           center={[40, 0]}

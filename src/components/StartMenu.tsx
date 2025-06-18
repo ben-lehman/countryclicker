@@ -22,7 +22,7 @@ function StartMenu({ handleGameStart }: StartMenuProps) {
 
   return (
     <div className="start-menu flex flex-wrap gap-x-4 justify-center items-center p-8 z-9999 bg-rp-base border-2 border-color-rp-gold shadow-md shadow-black">
-      <span className="text-rp-text">Select a Game Mode</span>
+      <span className="text-rp-text">Selllllect a Game Mode</span>
       <Tabs
         defaultValue="world"
         className="w-full"
